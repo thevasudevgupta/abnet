@@ -1,0 +1,4 @@
+torch==1.7.0
+transformers==3.5.0
+sacrebleu==1.4.14
+wandb==0.10.10

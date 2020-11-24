@@ -1,3 +1,3 @@
 __author__ = "Vasudev Gupta"
 
-from modeling.transformer import Transformer
+from modeling.enc_dec import Transformer

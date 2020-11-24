@@ -18,9 +18,10 @@ class CustomDataset(torch.utils.data.Dataset):
 
 class DataLoader(object):
 
-    def __init__(self, tr_src, tr_tgt, val_src, val_tgt, tokenizer, args):
+    def __init__(self, tr_src, tr_tgt, val_src, val_tgt, enc_tokenizer, dec_tokenizer, args):
 
-        self.tokenizer = tokenizer
+        self.enc_tokenizer = enc_tokenizer
+        self.dec_tokenizer = dec_tokenizer
 
         self.batch_size = args.batch_size
         self.num_workers = args.num_workers

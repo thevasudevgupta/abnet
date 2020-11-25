@@ -207,6 +207,9 @@ class BertLayer(nn.Module, MixAdapterLayer):
                                                 encoder_hidden_states=encoder_hidden_states,
                                                 encoder_attention_mask=encoder_attention_mask,
                                                 output_attentions=output_attentions)
+        if self.add_ffn_adapter:
+            layer_output = self.ffn_adapter_forward(layer_output)
+        raise ValueError("how many layers we need")
 
         outputs = (layer_output,) + outputs
         return outputs

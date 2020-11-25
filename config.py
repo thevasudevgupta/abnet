@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, replace, field
 import torch
-from transformers import BertConfig
+from adapters import AdapterConfig
 
 from torch_trainer import DefaultArgs
 
@@ -19,11 +19,11 @@ class TrainerConfig(DefaultArgs):
     src_lang: str = 'hi_IN'
     max_length: int = 32
     max_target_length: int = 32
-    tr_max_samples: int = 100000
-    val_max_samples: int = 20000
+    tr_max_samples: int = 100
+    val_max_samples: int = 20
 
-    batch_size: int = 32
-    lr: float = 1e-1
+    batch_size: int = 16
+    lr: float = 1e-4
 
     base_dir: str = "base_dir"
 
@@ -38,10 +38,13 @@ class TrainerConfig(DefaultArgs):
     # manually switch off layers in case you want to freeze
     load_adapter_path: str = None
     save_adapter_path: str = None
+    enc_ffn_adapter: bool = True
+    dec_ffn_adapter: bool = True
+    cross_attn_adapter: bool = True
 
     # args used in torch_trainer
     max_epochs: int = 3
-    accumulation_steps: int = 16
+    accumulation_steps: int = 1
     save_epoch_dir: str = None
     early_stop_n: int = None
     map_location: torch.device = torch.device("cuda:0")
@@ -52,25 +55,15 @@ class TrainerConfig(DefaultArgs):
     fast_dev_run: bool = False
 
     # all these args will be invalid if you run sweep
-    project_name: str = 'mbart'
+    project_name: str = 'parallel-decoder-paper'
     wandb_run_name: str = None
     wandb_off: bool = False
     wandb_resume: bool = False
     wandb_run_id: str = None
 
-    # bart inside config
-    bert_config: BertConfig = field(repr=False, default=BertConfig.from_pretrained(model_id))
+    # adapter-inside config
+    enc_ffn_adapter_config: FfnAdapterConfig = field(repr=False, default=FfnAdapterConfig)
+    dec_ffn_adapter_config: FfnAdapterConfig = field(repr=False, default=FfnAdapterConfig)
+    cross_attn_adapter_config: CrossAttnAdapterConfig = field(repr=False, default=CrossAttnAdapterConfig)
 
-
-transformer_config = {
-    "encoder":  {
-        "ffn_adapter_config":
-    },
-    "decoder":  {
-        "ffn_adapter_config": ,
-        "attn_adapter_config":
-    }
-
-}
-
-args = TrainerConfig()
+main = TrainerConfig()

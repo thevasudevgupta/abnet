@@ -57,6 +57,7 @@ class MixAdapterLayer(object):
 
     def __init__(self):
         self.add_cross_attn_adapter = False
+        self.add_ffn_adapter = False
 
     def add_cross_attn_adapter_(self, add, adapter_config=None)
         self.add_cross_attn_adapter = add
@@ -79,6 +80,14 @@ class MixAdapterLayer(object):
 
         return hidden_states[0]
 
+    def add_ffn_adapter(self, add, adapter_config):
+        self.add_ffn_adapter = add
+        self.ffn_adapter = FfnAdapter(adapter_config)
+
+    def ffn_adapter_forward(self, x):
+        x = self.ffn_adapter(x)
+        return x
+
 
 class MixAdapterBert(object):
 
@@ -96,6 +105,8 @@ class MixAdapterBert(object):
         n = len(self.encoder.layer)
         for i in range(n):
             self.encoder.layer[i].cross_attn_adapter.adapter_requires_grad_(cross_attn_adap)
+
+        # n = len(self.encoder.layer)
 
 
 class MixAdapterEncDec(object):

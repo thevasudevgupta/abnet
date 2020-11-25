@@ -1,5 +1,4 @@
 # __author__ = 'Vasudev Gupta'
-
 import torch
 from torch_trainer import TorchTrainer
 
@@ -19,7 +18,8 @@ class Trainer(TorchTrainer):
     def training_step(self, batch, batch_idx):
 
         for k in batch:
-          batch[k] = batch[k].to(self.device)
+            batch[k] = torch.tensor(batch[k])
+            batch[k] = batch[k].to(self.device)
 
         # with torch.cuda.amp.autocast((self.precision=='mixed_16')):
         out = self.model(**batch, return_dict=True)
@@ -31,7 +31,8 @@ class Trainer(TorchTrainer):
     def validation_step(self, batch):
 
         for k in batch:
-          batch[k] = batch[k].to(self.device)
+            batch[k] = torch.tensor(batch[k])
+            batch[k] = batch[k].to(self.device)
 
         with torch.no_grad():
             # with torch.cuda.amp.autocast((self.precision=='mixed_16')):
@@ -46,10 +47,6 @@ class Trainer(TorchTrainer):
             self.model.save_adapter(f"{self.args.base_dir}/{self.args.save_adapter_path}-{epoch}.pt", 
                         self.args.enc_ffn_adapter,
                         self.args.dec_ffn_adapter,
-                        self.args.cross_attn_adapter,
-                        self.args.enc_self_attn_adapter,
-                        self.args.dec_self_attn_adapter,
-                        self.args.enc_tok_embed_adapter,
-                        self.args.dec_tok_embed_adapter)
+                        self.args.cross_attn_adapter)
 
             self.save_training_state_dict(self.base_dir)

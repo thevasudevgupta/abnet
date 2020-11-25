@@ -17,6 +17,9 @@ if __name__ == "__main__":
 
     enc_bert = BertModel.from_pretrained(args.enc_bert_id)
     dec_bert = BertModel.from_pretrained(args.dec_bert_id)
+
+    dec_bert.add_adapter_()
+
     model = Transformer(enc_bert, transformer_config, dec_bert=dec_bert)
 
     tr_src, tr_tgt, val_src, val_tgt, src, tgt = read_prepare_data(args)

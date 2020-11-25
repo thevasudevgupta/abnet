@@ -1,17 +1,12 @@
 import torch
 import torch.nn as nn
 
-from attention import Attention
-
 from adapters import (
     FfnAdapter, 
     CrossAttnAdapter, 
     AdapterConfig
 )
 
-from transformers import BertModel
-
-bert = BertModel.from_pretrained(config.enc_bert_id)
 
 class Transformer(nn.Module):
 
@@ -45,4 +40,7 @@ class Transformer(nn.Module):
                                 output_attentions=output_attentions)
         x = self.dec_ffn_adapter(x)
 
-        
+        # -> (bz, seqlen, 768)        
+        x = F.linear(x, self.enc_bert., bias=self.final_layer_bias)
+
+       return x 

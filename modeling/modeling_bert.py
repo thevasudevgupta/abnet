@@ -142,7 +142,7 @@ class BertEmbeddings(nn.Module):
         embeddings = self.dropout(embeddings)
         return embeddings
 
-class BertLayer(nn.Module):
+class BertLayer(nn.Module, MixAdapterLayer):
     def __init__(self, config):
         super().__init__()
         self.chunk_size_feed_forward = config.chunk_size_feed_forward
@@ -155,6 +155,9 @@ class BertLayer(nn.Module):
             self.crossattention = BertAttention(config)
         self.intermediate = BertIntermediate(config)
         self.output = BertOutput(config)
+
+        # adapter stuff
+        MixAdapterLayer.__init__(self)
 
     def forward(
         self,
@@ -192,6 +195,19 @@ class BertLayer(nn.Module):
         layer_output = apply_chunking_to_forward(
             self.feed_forward_chunk, self.chunk_size_feed_forward, self.seq_len_dim, attention_output
         )
+
+        # TODO
+        raise ValueError("check shape of layer_output")
+        raise ValueError("fix attn mask and all")
+        # adapter stuff
+        if self.add_cross_attn_adapter:
+            layer_output = self.cross_attn_adapter_forward(layer_output,
+                                                attention_mask=attention_mask,
+                                                head_mask=head_mask,
+                                                encoder_hidden_states=encoder_hidden_states,
+                                                encoder_attention_mask=encoder_attention_mask,
+                                                output_attentions=output_attentions)
+
         outputs = (layer_output,) + outputs
         return outputs
 

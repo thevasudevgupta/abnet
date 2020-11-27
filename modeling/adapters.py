@@ -6,27 +6,35 @@ from torch import nn
 from transformers.activations import ACT2FN
 from dataclasses import dataclass
 
-from layers import BertAttention, BertIntermediate, BertOutput
-
-@dataclass
-class AdapterConfig:
-    hidden_size: int
-    intermediate_size: int
-    hidden_act: str
-    layer_norm_eps: float
-    hidden_dropout_prob: float
+from layers import BertAttention
 
 
-class FfnAdapter(nn.Module):
+class FFNAdapter(nn.Module):
 
     def __init__(self, config):
         super().__init__()
-        self.intermediate = BertIntermediate(config)
-        self.output = BertOutput(config)
 
-    def forward(self, attn_out)
-        inter_out = self.intermediate(attn_out)
-        x = self.output(inter_out, attn_out)
+        num_layers = config["num_layers"]
+        hidden_size = config["hidden_size"]
+        intermediate_size = config.get("intermediate_size", None)
+        layer_norm_eps = config["layer_norm_eps"]
+
+        if intermediate_size is None:
+            intermediate_size = hidden_size
+
+        layers = []
+        layers.append(nn.Linear(hidden_size, intermediate_size))
+
+        if num_layers == 2:
+            layers.append(nn.Linear(intermediate_size, hidden_size))
+
+        self.ffn = nn.Sequential(*layers)
+        self.LayerNorm = nn.LayerNorm(hidden_size, eps=layer_norm_eps)
+
+    def forward(self, input_tensor)
+        x = self.ffn(input_tensor)
+        x = self.LayerNorm(x + input_tensor)        
+        return x
 
 
 class CrossAttnAdapter(nn.Module):
@@ -59,9 +67,10 @@ class MixAdapterLayer(object):
         self.add_cross_attn_adapter = False
         self.add_ffn_adapter = False
 
-    def add_cross_attn_adapter_(self, add, adapter_config=None)
-        self.add_cross_attn_adapter = add
+    def add_cross_attn_adapter_(self, adapter_config):
+        self.add_cross_attn_adapter = True
         self.cross_attn_adapter = CrossAttnAdapter(adapter_config)
+        return "ADDED"
 
     def cross_attn_adapter_forward(self,  
                             hidden_states,
@@ -80,39 +89,71 @@ class MixAdapterLayer(object):
 
         return hidden_states[0]
 
-    def add_ffn_adapter(self, add, adapter_config):
-        self.add_ffn_adapter = add
-        self.ffn_adapter = FfnAdapter(adapter_config)
+    def add_ffn_adapter_(self, adapter_config):
+        self.add_ffn_adapter = True
+        self.ffn_adapter = FFNAdapter(adapter_config)
+        return "ADDED"
 
     def ffn_adapter_forward(self, x):
         x = self.ffn_adapter(x)
         return x
 
+    def adapter_requires_grad(self, ffn_adapter, cross_attn_adapter=None):
 
-class MixAdapterBert(object):
+        m1 = "ffn_adapter ADD first"
+        m2 = "cross-attn_adapter ADD first"
+
+        if self.add_ffn_adapter:
+            m1 = "ffn_adapter NOT trainable"
+            for param in self.ffn_adapter.parameters():
+                param.requires_grad_(ffn_adapter)
+            if ffn_adapter:
+                m1 = "ffn_adapter trainable"
+
+        if self.cross_attn_adapter:
+            m2 = "cross-attn_adapter NOT trainable"
+            for param in self.cross_attn_adapter.parameters():
+                param.requires_grad_(cross_attn_adapter)
+            if cross_attn_adapter:
+                m2 = "cross-attn_adapter trainable"
+
+        return m1, m2
+
+
+class MixAdapterTransformer(nn.Module):
 
     def __init__(self):
-        """Inherit BertModel from this class"""
+        super().__init__()
 
-    def add_adapter_(cross_attn_adap, cross_attn_adap_config):
+    def add_adapter_(self, 
+                enc_ffn_adapter, 
+                dec_ffn_adapter,
+                cross_attn_adapter,
+                enc_ffn_adapter_config,
+                dec_ffn_adapter_config, 
+                cross_attn_adapter_config):
 
-        if cross_attn_adap:
+        m1 = "cross-attn_adapter NOT added"
+        m2 = "decoder ffn_adapter NOT added"
+        m3 = "encoder ffn_adapter NOT added"
+
+        if cross_attn_adapter:
+            n = len(self.decoder.layer)
+            for i in range(n):
+                m1 = self.decoder.layer[i].add_cross_attn_adapter_(cross_attn_adapter_config)
+            m1 = "encoder " + m1
+
+        if dec_ffn_adapter:
+            n = len(self.decoder.layer)
+            for i in range(n):
+                m2 = self.decoder.layer[i].add_ffn_adapter_(dec_ffn_adapter_config)
+            m2 = "decoder " + m2
+
+        if enc_ffn_adapter:
             n = len(self.encoder.layer)
             for i in range(n):
-                self.encoder.layer[i].add_cross_attn_adapter_(cross_attn_adap_config)
-
-    def adapter_requires_grad(cross_attn_adap=None):
-        n = len(self.encoder.layer)
-        for i in range(n):
-            self.encoder.layer[i].cross_attn_adapter.adapter_requires_grad_(cross_attn_adap)
-
-        # n = len(self.encoder.layer)
-
-
-class MixAdapterEncDec(object):
-
-    def __init__(self):
-        """Inherit EncDec from this this class"""
+                m3 = self.encoder.layer[i].add_ffn_adapter_(enc_ffn_adapter_config)
+            m3 = "encoder " + m3
 
     def adapter_requires_grad_(self,
                     enc_ffn_adapter: bool,
@@ -120,18 +161,22 @@ class MixAdapterEncDec(object):
                     cross_attn_adapter: bool,
                 ):
 
-        num = len(self.model.encoder.layers)
-        for i in range(num):
-            m1, m2, _ = self.model.encoder.layer[i].adapter_requires_grad_(enc_ffn_adapter)
-            m1, m2 = "encoder " + m1, "encoder " + m2
+        m1 = "cross-attn_adapter NOT activated"
+        m2 = "decoder ffn_adapter NOT activated"
+        m3 = "encoder ffn_adapter NOT activated"
 
-        num = len(self.model.decoder.layers)
-        for i in range(num):
-            m3, m4, m5 = self.model.decoder.layer[i].adapter_requires_grad_(dec_ffn_adapter, cross_attn_adapter)
-            m3, m4, m5 = "decoder " + m3, "decoder " + m4, m5
+        n = len(self.encoder.layer)
+        for i in range(n):
+            m1, _ = self.encoder.layer[i].adapter_requires_grad_(enc_ffn_adapter)
+            m1 = "encoder " + m1
+
+        n = len(self.decoder.layer)
+        for i in range(n):
+            m2, m3 = self.decoder.layer[i].adapter_requires_grad_(dec_ffn_adapter, cross_attn_adapter)
+            m2 = "decoder " + m2
 
         print("==========Adapter activation status==========")
-        print(m1, "\n", m2, "\n", m3, "\n", m4, "\n", m5, "\n", m6, "\n", m7)
+        print(m1, "\n", m2, "\n", m3)
         print("=============================================")
 
     def save_adapter(self,
@@ -144,21 +189,21 @@ class MixAdapterEncDec(object):
         saving_keys = []
 
         if enc_ffn_adapter:
-            num = len(self.model.encoder.layers)
+            num = len(self.encoder.layer)
             for i in range(num):
-                k = f"model.encoder.layer.{i}.adapter_ffn"
+                k = f"encoder.layer.{i}.ffn_adapter"
                 saving_keys.extend([key for key in state_dict.keys() if key.startswith(k)])
 
         if dec_ffn_adapter:
-            num = len(self.model.decoder.layers)
+            num = len(self.decoder.layer)
             for i in range(num):
-                k = f"model.decoder.layer.{i}.adapter_ffn"
+                k = f"decoder.layer.{i}.ffn_adapter"
                 saving_keys.extend([key for key in state_dict.keys() if key.startswith(k)])
-        
+
         if cross_attn_adapter:
-            num = len(self.model.decoder.layers)
+            num = len(self.decoder.layer)
             for i in range(num):
-                k = f"model.decoder.layers.{i}.cross_attn_adapter"
+                k = f"decoder.layer.{i}.cross_attn_adapter"
                 saving_keys.extend([key for key in state_dict.keys() if key.startswith(k)])
 
         saving = {}

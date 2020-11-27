@@ -1,10 +1,10 @@
 # __author__ = 'Vasudev Gupta'
 
-from dataclasses import dataclass, replace, field
+from dataclasses import dataclass, replace
 import torch
-from adapters import AdapterConfig
 
 from torch_trainer import DefaultArgs
+
 
 @dataclass
 class TrainerConfig(DefaultArgs):
@@ -13,10 +13,6 @@ class TrainerConfig(DefaultArgs):
     src_file: str = 'data/something'
     single_file: bool = False
 
-    enc_bert_id: str = "bert-base-uncased"
-    dec_bert_id: str = "bert-base-uncased"
-
-    src_lang: str = 'hi_IN'
     max_length: int = 32
     max_target_length: int = 32
     tr_max_samples: int = 100
@@ -32,15 +28,10 @@ class TrainerConfig(DefaultArgs):
     num_workers: int = 2
     max_pred_length: int = 40
 
-    tgt_lang: str = 'en_XX'
-
     # control adapter from here
     # manually switch off layers in case you want to freeze
     load_adapter_path: str = None
     save_adapter_path: str = None
-    enc_ffn_adapter: bool = True
-    dec_ffn_adapter: bool = True
-    cross_attn_adapter: bool = True
 
     # args used in torch_trainer
     max_epochs: int = 3
@@ -60,10 +51,5 @@ class TrainerConfig(DefaultArgs):
     wandb_off: bool = False
     wandb_resume: bool = False
     wandb_run_id: str = None
-
-    # adapter-inside config
-    enc_ffn_adapter_config: FfnAdapterConfig = field(repr=False, default=FfnAdapterConfig)
-    dec_ffn_adapter_config: FfnAdapterConfig = field(repr=False, default=FfnAdapterConfig)
-    cross_attn_adapter_config: CrossAttnAdapterConfig = field(repr=False, default=CrossAttnAdapterConfig)
 
 main = TrainerConfig()

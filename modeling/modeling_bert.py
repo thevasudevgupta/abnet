@@ -24,9 +24,8 @@ from transformers.modeling_utils import (
     apply_chunking_to_forward
 )
 
-from layers import BertAttention, BertIntermediate, BertOutput
-
-from adapters import FfnAdapter, FfnAdapterConfig
+from bert_layers import BertAttention, BertIntermediate, BertOutput
+from adapters import MixAdapterLayer
 
 def load_tf_weights_in_bert(model, config, tf_checkpoint_path):
     """Load tf checkpoints in a pytorch model."""

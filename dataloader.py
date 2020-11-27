@@ -2,6 +2,8 @@
 import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
+from transformers import BertTokenizer
+
 
 class CustomDataset(torch.utils.data.Dataset):
 
@@ -21,10 +23,10 @@ class CustomDataset(torch.utils.data.Dataset):
 
 class DataLoader(object):
 
-    def __init__(self, enc_tokenizer, dec_tokenizer, args):
+    def __init__(self, transformer_config, args):
 
-        self.enc_tokenizer = enc_tokenizer
-        self.dec_tokenizer = dec_tokenizer
+        self.enc_tokenizer = BertTokenizer.from_pretrained(transformer_config["encoder_id"])
+        self.dec_tokenizer = BertTokenizer.from_pretrained(transformer_config["decoder_id"])
 
         self.batch_size = args.batch_size
         self.num_workers = args.num_workers

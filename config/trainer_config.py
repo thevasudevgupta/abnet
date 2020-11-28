@@ -11,19 +11,19 @@ class TrainerConfig(DefaultArgs):
 
     tgt_file: str = 'data/something'
     src_file: str = 'data/something'
-    single_file: bool = False
 
     max_length: int = 32
     max_target_length: int = 32
     tr_max_samples: int = 100
     val_max_samples: int = 20
+    tst_max_samples: int = 20
 
     batch_size: int = 16
     lr: float = 1e-4
 
     base_dir: str = "base_dir"
 
-    test_size: float = .25
+    val_split: float = .25
     random_seed:  int = 7232114
     num_workers: int = 2
     max_pred_length: int = 40
@@ -53,3 +53,12 @@ class TrainerConfig(DefaultArgs):
     wandb_run_id: str = None
 
 main = TrainerConfig()
+
+IWSLT14 = TrainerConfig(src_file="data/iwslt14/train.tags.de-en.en",
+                    tgt_file="data/iwslt14/train.tags.de-en.de",
+                    wandb_run_name="iwslt14-157K,7K",
+                    base_dir="iwslt14-157K,7K",
+                    val_split=0.043,
+                    tr_max_samples=157000,
+                    val_max_samples=7000,
+                    tst_max_samples=7000)

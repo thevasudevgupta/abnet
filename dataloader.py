@@ -17,8 +17,8 @@ class CustomDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         return {
-            'input_ids': self.src[idx],
-            'labels': self.tgt[idx]
+            'src': self.src[idx],
+            'tgt': self.tgt[idx]
         }
 
 class DataLoader(object):
@@ -28,20 +28,21 @@ class DataLoader(object):
         self.enc_tokenizer = BertTokenizer.from_pretrained(transformer_config["encoder_id"])
         self.dec_tokenizer = BertTokenizer.from_pretrained(transformer_config["decoder_id"])
 
+        # decoder based
+        self.sep_token = self.dec_tokenizer.convert_tokens_to_ids(self.dec_tokenizer.sep_token)
+        self.cls_token = self.dec_tokenizer.convert_tokens_to_ids(self.dec_tokenizer.cls_token)
+
         self.batch_size = args.batch_size
         self.num_workers = args.num_workers
 
         self.max_length = args.max_length
         self.max_target_length = args.max_target_length
 
-        self.src_lang = args.src_lang
-        self.tgt_lang = args.tgt_lang
-
         # prepare_data args
         self.tr_max_samples = args.tr_max_samples
         self.val_max_samples = args.val_max_samples
         self.random_state = args.random_seed
-        self.test_size = args.test_size
+        self.val_split = args.val_split
         self.tgt_file = args.tgt_file
         self.src_file = args.src_file
 
@@ -63,7 +64,7 @@ class DataLoader(object):
             tgt = file1.readlines()
             src = file2.readlines()
         print('total size of data (src, tgt): ', f'({len(src)}, {len(tgt)})')
-        tr_src, val_src, tr_tgt, val_tgt = train_test_split(src, tgt, test_size=self.test_size, random_state=self.random_seed, shuffle=True)
+        tr_src, val_src, tr_tgt, val_tgt = train_test_split(src, tgt, test_size=self.val_split, random_state=self.random_seed, shuffle=True)
         
         self.tr_src = tr_src[:self.tr_max_samples]
         self.tr_tgt = tr_tgt[:self.tr_max_samples]
@@ -91,16 +92,12 @@ class DataLoader(object):
                                             num_workers=self.num_workers)
 
     def collate_fn(self, features):
-        
-        raise ValueError("fix tokenizer")
 
-        inputs = [f['input_ids'] for f in features]
-        labels = [f['labels'] for f in features]
-        
-        batch =  self.tokenizer.prepare_seq2seq_batch(
-            src_texts=inputs, src_lang=self.src_lang, tgt_lang=self.tgt_lang, tgt_texts=labels,
-            max_length=self.max_length, max_target_length=self.max_target_length)
-        
+        src = [f['src'] for f in features]
+        tgt = [f['tgt'] for f in features]
+
+        batch =  self.prepare_seq2seq_batch(src_texts=src, tgt_texts=tgt)
+
         return batch
 
     def build_seqlen_table(self):
@@ -125,3 +122,32 @@ class DataLoader(object):
         data = [[src_tr[k], src_val[k], tgt_tr[k], tgt_val[k]] for k in ['max', 'avg', 'min']]
 
         return data, columns
+
+    def prepare_seq2seq_batch(self, src_texts: list, tgt_texts: list = None):
+
+        src_batch = self.enc_tokenizer(src_texts, padding=True, max_length=self.max_length, truncation=True)
+
+        out = {
+            "input_ids": torch.tensor(src_batch["input_ids"]),
+            "encoder_attention_mask": torch.tensor(src_batch["attention_mask"])
+        }
+
+        if tgt_texts is not None:
+            tgt_batch = self.dec_tokenizer(tgt_texts, padding=True, max_length=self.max_target_length, truncation=True)
+
+            decoder_input_ids = torch.tensor(tgt_batch["input_ids"])
+            labels = decoder_input_ids[:, 1:]
+
+            raise ValueError("fix decoder input ids")
+
+            # cls_arr = [[self.cls_token] for i in range(len(tgt_texts))]
+            # decoder_input_ids = torch.cat([cls_arr, decoder_input_ids], dim=1)
+            # decoder_input_ids[:, 1] = self.sep_token
+
+            out.update({
+                "decoder_input_ids": decoder_input_ids,
+                "labels": labels,
+                "decoder_attention_mask": torch.tensor(tgt_batch["attention_mask"])
+            })
+
+        return out

@@ -1,34 +1,38 @@
 # __author__ = 'Vasudev Gupta'
-import torch
-from tqdm import tqdm
 
-@torch.no_grad()
-def predictor(model, tokenizer, lists_src, lists_tgt, pred_max_length, src_lang='hi_IN', device=torch.device("cuda")):
-    pred = []
-    val_data = []
-    tgt = []
+import wandb
+from sacrebleu import corpus_bleu
 
-    model.to(device)
-    model.eval()
 
-    raise ValueError("fix tokenizer")  
-    bar = tqdm(zip(lists_src, lists_tgt), desc="predicting ... ", leave=False)
-    for s, t in bar:
-         batch =  tokenizer.prepare_seq2seq_batch(src_texts=s, src_lang=src_lang)
+class Logger(object):
 
-         for k in batch:
-            batch[k] = torch.tensor(batch[k])
-            batch[k] = batch[k].to(device)
+    def __init__(self, trainer, dl, batch_size, num_samples):
+        self.trainer = trainer
+        self.dl = dl
+        self.batch_size = batch_size
+        self.num_samples = num_samples
 
-        raise ValueError("fix .generate method")
+    def log_length_table(self):
+        # seqlen logging
+        data, columns = self.dl.build_seqlen_table()
+        wandb.log({'Sequence-Lengths': wandb.Table(data=data, columns=columns)})
 
-        out = model.generate(**batch, decoder_start_token_id=tokenizer.lang_code_to_id["en_XX"], max_length=pred_max_length)
-        translation = tokenizer.batch_decode(out, skip_special_tokens=True)
-         
-        val = list(zip(s, t, translation))
-        val_data.extend(val)
+    def log_translations_and_bleu(self, src_texts, tgt_texts, mode="val"):
+        # bleu keeping number of samples in training and validation same
+        indices = range(0, self.num_samples, self.batch_size)
 
-        pred.extend(translation)
-        tgt.extend(t)
+        # batching the data
+        src_texts = [src_texts[start:self.batch_size+start] for start in indices]
+        tgt_texts = [tgt_texts[start:self.batch_size+start] for start in indices]
 
-    return val_data, pred, tgt
+        print(f"Calculating bleu over {mode} data", end=" ")
+        data, pred, tgt = self.trainer.fetch_translations(src_texts, tgt_texts, self.dl)
+        wandb.log({mode+'_predictions': wandb.Table(data=data, columns=['src', 'tgt', 'tgt_pred'])})
+
+        tgt = [d[1] for d in data]
+        pred = [d[2] for d in data]
+
+        # bleu score
+        bleu = corpus_bleu(pred, [tgt]).score
+        wandb.log({mode+'_bleu': bleu})
+        print("||DONE||")

@@ -14,7 +14,6 @@ class FFNAdapter(nn.Module):
     def __init__(self, config):
         super().__init__()
 
-        num_layers = config["num_layers"]
         hidden_size = config["hidden_size"]
         intermediate_size = config.get("intermediate_size", None)
         layer_norm_eps = config["layer_norm_eps"]
@@ -23,10 +22,10 @@ class FFNAdapter(nn.Module):
             intermediate_size = hidden_size
 
         layers = []
-        layers.append(nn.Linear(hidden_size, intermediate_size))
 
-        if num_layers == 2:
-            layers.append(nn.Linear(intermediate_size, hidden_size))
+        layers.append(nn.Linear(hidden_size, intermediate_size))
+        layer.append(nn.ReLU())
+        layers.append(nn.Linear(intermediate_size, hidden_size))
 
         self.ffn = nn.Sequential(*layers)
         self.LayerNorm = nn.LayerNorm(hidden_size, eps=layer_norm_eps)

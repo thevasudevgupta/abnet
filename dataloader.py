@@ -137,17 +137,15 @@ class DataLoader(object):
 
             decoder_input_ids = torch.tensor(tgt_batch["input_ids"])
             labels = decoder_input_ids[:, 1:]
+            decoder_input_ids = torch.tensor([m[m!=self.sep_token].tolist() for m in decoder_input_ids])
 
-            raise ValueError("fix decoder input ids")
-
-            # cls_arr = [[self.cls_token] for i in range(len(tgt_texts))]
-            # decoder_input_ids = torch.cat([cls_arr, decoder_input_ids], dim=1)
-            # decoder_input_ids[:, 1] = self.sep_token
+            decoder_attention_mask = torch.tensor(tgt_batch["attention_mask"])
+            decoder_attention_mask = decoder_attention_mask[:, 1:]
 
             out.update({
                 "decoder_input_ids": decoder_input_ids,
                 "labels": labels,
-                "decoder_attention_mask": torch.tensor(tgt_batch["attention_mask"])
+                "decoder_attention_mask": decoder_attention_mask
             })
 
         return out

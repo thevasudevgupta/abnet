@@ -51,11 +51,11 @@ class CrossAttnAdapter(nn.Module):
         output_attentions=False
     ):
         out = self.attn(hidden_states,
-                attention_mask=None,
-                head_mask=None,
-                encoder_hidden_states=None,
-                encoder_attention_mask=None,
-                output_attentions=False)
+                attention_mask=attention_mask,
+                head_mask=head_mask,
+                encoder_hidden_states=encoder_hidden_states,
+                encoder_attention_mask=encoder_attention_mask,
+                output_attentions=output_attentions)
 
         return out
 
@@ -94,8 +94,7 @@ class MixAdapterLayer(object):
         return "ADDED"
 
     def ffn_adapter_forward(self, x):
-        x = self.ffn_adapter(x)
-        return x
+        return self.ffn_adapter(x)
 
     def adapter_requires_grad(self, ffn_adapter, cross_attn_adapter=None):
 

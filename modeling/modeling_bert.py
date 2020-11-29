@@ -195,9 +195,6 @@ class BertLayer(nn.Module, MixAdapterLayer):
             self.feed_forward_chunk, self.chunk_size_feed_forward, self.seq_len_dim, attention_output
         )
 
-        # TODO
-        raise ValueError("check shape of layer_output")
-        raise ValueError("fix attn mask and all")
         # adapter stuff
         if self.add_cross_attn_adapter:
             layer_output = self.cross_attn_adapter_forward(layer_output,
@@ -208,7 +205,6 @@ class BertLayer(nn.Module, MixAdapterLayer):
                                                 output_attentions=output_attentions)
         if self.add_ffn_adapter:
             layer_output = self.ffn_adapter_forward(layer_output)
-        raise ValueError("how many layers we need")
 
         outputs = (layer_output,) + outputs
         return outputs
@@ -291,21 +287,6 @@ class BertEncoder(nn.Module):
             attentions=all_self_attentions,
             cross_attentions=all_cross_attentions,
         )
-
-
-class BertPooler(nn.Module):
-    def __init__(self, config):
-        super().__init__()
-        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.activation = nn.Tanh()
-
-    def forward(self, hidden_states):
-        # We "pool" the model by simply taking the hidden state corresponding
-        # to the first token.
-        first_token_tensor = hidden_states[:, 0]
-        pooled_output = self.dense(first_token_tensor)
-        pooled_output = self.activation(pooled_output)
-        return pooled_output
 
 
 class BertPreTrainedModel(PreTrainedModel):
@@ -443,6 +424,11 @@ class BertModel(BertPreTrainedModel):
         embedding_output = self.embeddings(
             input_ids=input_ids, position_ids=position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds
         )
+
+        # adapter stuff
+        if (encoder_attention_mask is not None) and (encoder_hidden_states is not None):
+            encoder_extended_attention_mask = self.invert_attention_mask(encoder_attention_mask)
+
         encoder_outputs = self.encoder(
             embedding_output,
             attention_mask=extended_attention_mask,

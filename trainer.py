@@ -22,20 +22,14 @@ class Trainer(TorchTrainer):
             batch[k] = batch[k].to(self.device)
         # with torch.cuda.amp.autocast((self.precision=='mixed_16')):
         out = self.model(**batch, return_dict=True)
-        loss = out["loss"].mean()
-        return loss
+        return out["loss"]
 
+    @torch.no_grad()
     def validation_step(self, batch):
-
         for k in batch:
             batch[k] = batch[k].to(self.device)
-
-        with torch.no_grad():
-            # with torch.cuda.amp.autocast((self.precision=='mixed_16')):
-            out = self.model(**batch, return_dict=True)
-            loss = out["loss"].mean()
-
-        return loss
+        out = self.model(**batch, return_dict=True)
+        return out["loss"]
 
     def training_epoch_end(self, epoch, losses):
 

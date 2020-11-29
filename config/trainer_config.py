@@ -9,24 +9,27 @@ from torch_trainer import DefaultArgs
 @dataclass
 class TrainerConfig(DefaultArgs):
 
-    tgt_file: str = 'data/something'
-    src_file: str = 'data/something'
+    tr_tgt_file: str = 'data/something'
+    tr_src_file: str = 'data/something'
+
+    val_tgt_file: str = ""
+    val_src_file: str = ""
+
+    tst_tgt_file: str = ""
+    tst_src_file: str = ""
 
     max_length: int = 32
     max_target_length: int = 32
-    tr_max_samples: int = 100
-    val_max_samples: int = 20
-    tst_max_samples: int = 20
+    
+    tr_max_samples: int = -1
+    val_max_samples: int = -1
+    tst_max_samples: int = -1
 
     batch_size: int = 16
     lr: float = 1e-4
 
     base_dir: str = "base_dir"
-
-    val_split: float = .25
-    random_seed:  int = 7232114
     num_workers: int = 2
-    max_pred_length: int = 40
 
     # control adapter from here
     # manually switch off layers in case you want to freeze
@@ -54,11 +57,14 @@ class TrainerConfig(DefaultArgs):
 
 main = TrainerConfig()
 
-IWSLT14 = TrainerConfig(src_file="data/iwslt14/train.tags.de-en.en",
-                    tgt_file="data/iwslt14/train.tags.de-en.de",
+IWSLT14 = TrainerConfig(tr_src_file="data/iwslt14/iwslt14.tokenized.de-en/train.de",
+                    tr_tgt_file="iwslt14/iwslt14.tokenized.de-en/train.en",
+                    val_src_file="data/iwslt14/iwslt14.tokenized.de-en/valid.de",
+                    val_tgt_file="iwslt14/iwslt14.tokenized.de-en/valid.en",
+                    tst_src_file="data/iwslt14/iwslt14.tokenized.de-en/test.de",
+                    tst_tgt_file="iwslt14/iwslt14.tokenized.de-en/test.en",
                     wandb_run_name="iwslt14-157K,7K",
                     base_dir="iwslt14-157K,7K",
-                    val_split=0.043,
-                    tr_max_samples=157000,
-                    val_max_samples=7000,
-                    tst_max_samples=7000)
+                    tr_max_samples=-1,
+                    val_max_samples=-1,
+                    tst_max_samples=-1)

@@ -507,11 +507,11 @@ class TrainingLoop(ABC, TrainerSetup):
             wandb.log({
                 'epoch': epoch,
                 'tr_loss': np.mean(losses),
-                'val_loss': val_loss.item()
+                'val_loss': val_loss
                 }, commit=False)
 
             tr_metric.append(np.mean(losses))
-            val_metric.append(val_loss.item())
+            val_metric.append(val_loss)
 
             if self.save_epoch_dir:
                 save_status = self.assert_epoch_saving(val_metric, n=self.epoch_saving_n, mode="min")
@@ -541,13 +541,16 @@ class TrainingLoop(ABC, TrainerSetup):
         # disabling layers like dropout, batch-normalization
         self.model.train(False)
 
+        running_loss = []
+
         desc = 'Validating ....'
         pbar = tqdm(val_dataset, total=len(val_dataset), desc=desc, initial=0, leave=False)
         for batch in pbar:
             val_loss = self.val_step(batch)
             pbar.set_postfix(val_loss=val_loss.item())
+            running_loss.append(val_loss.item())
 
-        return val_loss
+        return np.mean(running_loss)
 
     def save_training_state_dict(self, save_dir: str):
 

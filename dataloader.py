@@ -41,39 +41,47 @@ class DataLoader(object):
         # prepare_data args
         self.tr_max_samples = args.tr_max_samples
         self.val_max_samples = args.val_max_samples
-        self.random_state = args.random_seed
-        self.val_split = args.val_split
-        self.tgt_file = args.tgt_file
-        self.src_file = args.src_file
+        self.tst_max_samples = args.tst_max_samples
+
+        self.tr_tgt_file = args.tr_tgt_file
+        self.tr_src_file = args.tr_src_file
+
+        self.val_tgt_file = args.val_tgt_file
+        self.val_src_file = args.val_src_file
+
+        self.tst_tgt_file = args.tst_tgt_file
+        self.tst_src_file = args.tst_src_file
 
     def __call__(self):
-        self.prepare_data()
+
+        self.tr_src, self.tr_tgt = self.prepare_data(self.tr_tgt_file, self.tr_src_file, self.tr_max_samples, "tr")
+        self.val_src, self.val_tgt = self.prepare_data(self.val_tgt_file, self.val_src_file, self.val_max_samples, "val")
+        self.tst_src, self.tst_tgt = self.prepare_data(self.tst_tgt_file, self.tst_src_file, self.tst_max_samples, "tst")
+
         self.setup()
+
         tr_dataset = self.train_dataloader()
         val_dataset = self.val_dataloader()
-        return tr_dataset, val_dataset
+        test_dataset = self.test_dataloader()
 
-    def prepare_data(self):
-        # with open("data/itr.txt") as file1:
-        #     data = file1.readlines()
+        return tr_dataset, val_dataset, test_dataset
 
-        # tgt = [d.split("\t")[0] for d in data]
-        # src = [d.split("\t")[1] for d in data]
+    def prepare_data(self, tgt_file, src_file, max_samples, mode="tr"):
 
-        with open(self.tgt_file) as file1, open(self.src_file) as file2:
+        with open(tgt_file) as file1, open(src_file) as file2:
             tgt = file1.readlines()
             src = file2.readlines()
-        print('total size of data (src, tgt): ', f'({len(src)}, {len(tgt)})')
-        tr_src, val_src, tr_tgt, val_tgt = train_test_split(src, tgt, test_size=self.val_split, random_state=self.random_seed, shuffle=True)
+        print(f'total size of {mode} data (src, tgt): ', f'({len(src)}, {len(tgt)})')
         
-        self.tr_src = tr_src[:self.tr_max_samples]
-        self.tr_tgt = tr_tgt[:self.tr_max_samples]
-        self.val_src = val_src[:self.val_max_samples]
-        self.val_tgt = val_tgt[:self.val_max_samples]
+        src = src[:max_samples]
+        tgt = tgt[:max_samples]
+
+        return src, tgt
 
     def setup(self):
         self.tr_dataset = CustomDataset(self.tr_src, self.tr_tgt)
         self.val_dataset = CustomDataset(self.val_src, self.val_tgt)
+        self.test_dataset = CustomDataset(self.tr_src, self.tr_tgt)
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(self.tr_dataset,
@@ -85,6 +93,14 @@ class DataLoader(object):
 
     def val_dataloader(self):
         return torch.utils.data.DataLoader(self.val_dataset,
+                                            pin_memory=True,
+                                            shuffle=False,
+                                            batch_size=self.batch_size,
+                                            collate_fn=self.collate_fn,
+                                            num_workers=self.num_workers)
+    
+    def test_dataloader(self):
+        return torch.utils.data.DataLoader(self.test_dataset,
                                             pin_memory=True,
                                             shuffle=False,
                                             batch_size=self.batch_size,

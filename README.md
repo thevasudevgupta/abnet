@@ -2,9 +2,13 @@
 
 This is my implementation of this [paper](https://arxiv.org/abs/2010.06138).
 
-## Authors
-- Vasudev Gupta
-- Rishabh Shah
+## Setting Up
 
-**Feel free to raise an issue incase you have any problems in this implementation.**
+```python
+# preparing data 
+cd data/iwslt14
+bash prepare-iwslt14.sh
 
+```
+
+**Feel free to raise an issue incase you find any problems in this implementation.**

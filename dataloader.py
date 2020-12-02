@@ -28,9 +28,13 @@ class DataLoader(object):
         self.enc_tokenizer = BertTokenizer.from_pretrained(transformer_config["encoder_id"])
         self.dec_tokenizer = BertTokenizer.from_pretrained(transformer_config["decoder_id"])
 
+        self.enc_tokenizer.add_tokens(transformer_config.length_token)
+        self.length_id = self.enc_tokenizer.convert_tokens_to_ids(transformer_config.length_token)
+
+        # encoder based
+        self.cls_id = self.enc_tokenizer.convert_tokens_to_ids(self.enc_tokenizer.cls_token)
         # decoder based
-        self.sep_token = self.dec_tokenizer.convert_tokens_to_ids(self.dec_tokenizer.sep_token)
-        self.cls_token = self.dec_tokenizer.convert_tokens_to_ids(self.dec_tokenizer.cls_token)
+        self.sep_id = self.dec_tokenizer.convert_tokens_to_ids(self.dec_tokenizer.sep_token)
 
         self.batch_size = args.batch_size
         self.num_workers = args.num_workers
@@ -143,8 +147,10 @@ class DataLoader(object):
 
         src_batch = self.enc_tokenizer(src_texts, padding=True, max_length=self.max_length, truncation=True)
 
+        input_ids = torch.tensor(src_batch["input_ids"])
+        input_ids[input_ids==self.cls_id] = self.length_id
         out = {
-            "input_ids": torch.tensor(src_batch["input_ids"]),
+            "input_ids": input_ids,
             "encoder_attention_mask": torch.tensor(src_batch["attention_mask"])
         }
 
@@ -153,7 +159,7 @@ class DataLoader(object):
 
             decoder_input_ids = torch.tensor(tgt_batch["input_ids"])
             labels = decoder_input_ids[:, 1:]
-            decoder_input_ids = torch.tensor([m[m!=self.sep_token].tolist() for m in decoder_input_ids])
+            decoder_input_ids = torch.tensor([m[m!=self.sep_id].tolist() for m in decoder_input_ids])
 
             decoder_attention_mask = torch.tensor(tgt_batch["attention_mask"])
             decoder_attention_mask = decoder_attention_mask[:, 1:]

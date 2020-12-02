@@ -1,4 +1,4 @@
-# code is taken from HuggingFace
+# this code is adapted from huggingface BERT code
 
 import torch.nn as nn
 import torch

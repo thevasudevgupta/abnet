@@ -1,4 +1,4 @@
-# code is taken from HuggingFace
+# this code is adapted from huggingface BERT code
 """PyTorch BERT model. """
 
 import math

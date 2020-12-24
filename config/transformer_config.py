@@ -1,7 +1,20 @@
 # __author__ = 'Vasudev Gupta'
 
+class Config(object):
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    def __getitem__(self, k):
+        return getattr(self, k)
+
+    def __repr__(self):
+        return f"ModelConfig({self.kwargs})"
+
 # IWSLT14 De-En
-IWSLT14 = dict(encoder_id="bert-base-german-cased",
+IWSLT14 = Config(encoder_id="bert-base-german-cased",
             decoder_id="bert-base-uncased",
             enc_ffn_adapter=True,
             dec_ffn_adapter=True,

@@ -1,21 +1,37 @@
 # Incorporating BERT into Parallel Sequence Decoding with Adapters
 
-This is my implementation of this [paper](https://arxiv.org/abs/2010.06138).
+Unofficial implementation of [paper](https://arxiv.org/abs/2010.06138).
 
 ## Setting Up
 
 ```python
-# preparing data 
+# cloning github repo
+git clone https://github.com/vasudevgupta7/cs6910-project.git
+cd cs6910-project
+```
+
+**Setting up dataset and training scripts**
+
+```python
+# Prepare IWSLT14 dataset 
 cd data/iwslt14
 bash prepare-iwslt14.sh
 
+# start training
+python main.py
 ```
 
+**Using trained model directly**
 
-## TODO
-- [ ] Take top B length prediction and select one with best prob (B = 4)
-- [ ] upper bound of iterative decoding is 10
-- [ ] how we will be training embedding for LENGTH token?
-- [ ] tokens may repeat from 1st round to 2nd round, when 2nd round is done and moving to 3rd round of masking.
+```python
+# Using model for inference
+import config
+from modeling import TransformerMaskPredict
 
-**Feel free to raise an issue incase you find any problems in this implementation.**
+transformer_config = config.model_iwslt14
+model = TransformerMaskPredict(transformer_config)
+model.load("abnet-iwslt14.pt")
+model.eval()
+```
+
+**Feel free to raise an issue incase you find some problem in this implementation.**

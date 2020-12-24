@@ -12,7 +12,7 @@ from torch import nn
 from torch.nn import CrossEntropyLoss, MSELoss
 
 from transformers.activations import ACT2FN
-from transformers.configuration_bert import BertConfig
+from transformers.models.bert.configuration_bert import BertConfig
 
 from transformers.modeling_outputs import (
     BaseModelOutputWithPoolingAndCrossAttentions, 
@@ -24,8 +24,11 @@ from transformers.modeling_utils import (
     apply_chunking_to_forward
 )
 
-from bert_layers import BertAttention, BertIntermediate, BertOutput
-from adapters import MixAdapterLayer
+from modeling.bert_layers import BertAttention, BertIntermediate, BertOutput, BertPooler
+from modeling.adapters import MixAdapterBL
+
+import logging
+logger = logging.getLogger(__name__)
 
 def load_tf_weights_in_bert(model, config, tf_checkpoint_path):
     """Load tf checkpoints in a pytorch model."""
@@ -141,7 +144,7 @@ class BertEmbeddings(nn.Module):
         embeddings = self.dropout(embeddings)
         return embeddings
 
-class BertLayer(nn.Module, MixAdapterLayer):
+class BertLayer(nn.Module, MixAdapterBL):
     def __init__(self, config):
         super().__init__()
         self.chunk_size_feed_forward = config.chunk_size_feed_forward
@@ -156,7 +159,7 @@ class BertLayer(nn.Module, MixAdapterLayer):
         self.output = BertOutput(config)
 
         # adapter stuff
-        MixAdapterLayer.__init__(self)
+        MixAdapterBL.__init__(self)
 
     def forward(
         self,
@@ -327,12 +330,16 @@ class BertModel(BertPreTrainedModel):
     input to the forward pass.
     """
 
-    def __init__(self, config, add_pooling_layer=True):
+    def __init__(self, config, num_lengths=512, add_length_embedding=False, add_pooling_layer=False):
         super().__init__(config)
         self.config = config
 
         self.embeddings = BertEmbeddings(config)
         self.encoder = BertEncoder(config)
+
+        self.add_length_embedding = add_length_embedding
+        if add_length_embedding:
+            self.length_embedding = nn.Embedding(num_embeddings=num_lengths, embedding_dim=config.hidden_size)
 
         self.pooler = BertPooler(config) if add_pooling_layer else None
 
@@ -422,8 +429,12 @@ class BertModel(BertPreTrainedModel):
         head_mask = self.get_head_mask(head_mask, self.config.num_hidden_layers)
 
         embedding_output = self.embeddings(
-            input_ids=input_ids, position_ids=position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds
+            input_ids=input_ids[:, 1:], position_ids=position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds
         )
+
+        if self.add_length_embedding:
+            length_embed = self.length_embedding(input_ids[:, :1])
+            embedding_output = torch.cat([length_embed, embedding_output], dim=1)
 
         # adapter stuff
         if (encoder_attention_mask is not None) and (encoder_hidden_states is not None):
@@ -440,7 +451,14 @@ class BertModel(BertPreTrainedModel):
             return_dict=return_dict,
         )
         sequence_output = encoder_outputs[0]
+        # must not use pooler output becauze CLS is 2nd token now
         pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
+
+        if self.add_length_embedding:
+            return    {
+                "length_logits": sequence_output[:, :1, :],
+                "last_hidden_state": sequence_output[:, 1:, :]
+            }
 
         if not return_dict:
             return (sequence_output, pooled_output) + encoder_outputs[1:]

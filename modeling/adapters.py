@@ -2,11 +2,9 @@
 
 import torch
 from torch import nn
-
 from transformers.activations import ACT2FN
-from dataclasses import dataclass
 
-from layers import BertAttention
+from modeling.bert_layers import BertAttention
 
 
 class FFNAdapter(nn.Module):
@@ -24,13 +22,13 @@ class FFNAdapter(nn.Module):
         layers = []
 
         layers.append(nn.Linear(hidden_size, intermediate_size))
-        layer.append(nn.ReLU())
+        layers.append(nn.ReLU())
         layers.append(nn.Linear(intermediate_size, hidden_size))
 
         self.ffn = nn.Sequential(*layers)
         self.LayerNorm = nn.LayerNorm(hidden_size, eps=layer_norm_eps)
 
-    def forward(self, input_tensor)
+    def forward(self, input_tensor):
         x = self.ffn(input_tensor)
         x = self.LayerNorm(x + input_tensor)        
         return x
@@ -60,7 +58,7 @@ class CrossAttnAdapter(nn.Module):
         return out
 
 
-class MixAdapterLayer(object):
+class MixAdapterBL(object):
 
     def __init__(self):
         self.add_cross_attn_adapter = False
@@ -118,7 +116,7 @@ class MixAdapterLayer(object):
         return m1, m2
 
 
-class MixAdapterTransformer(nn.Module):
+class MixAdapterTMP(nn.Module):
 
     def __init__(self):
         super().__init__()
@@ -139,7 +137,6 @@ class MixAdapterTransformer(nn.Module):
             n = len(self.decoder.layer)
             for i in range(n):
                 m1 = self.decoder.layer[i].add_cross_attn_adapter_(cross_attn_adapter_config)
-            m1 = "encoder " + m1
 
         if dec_ffn_adapter:
             n = len(self.decoder.layer)
@@ -152,6 +149,11 @@ class MixAdapterTransformer(nn.Module):
             for i in range(n):
                 m3 = self.encoder.layer[i].add_ffn_adapter_(enc_ffn_adapter_config)
             m3 = "encoder " + m3
+
+        print("==========Adapter ADDN status==========")
+        print(m1, "\n", m2, "\n", m3)
+        print("=============================================")
+
 
     def adapter_requires_grad_(self,
                     enc_ffn_adapter: bool,
@@ -177,11 +179,16 @@ class MixAdapterTransformer(nn.Module):
         print(m1, "\n", m2, "\n", m3)
         print("=============================================")
 
-    def save_adapter(self,
-                    path: str,
-                    enc_ffn_adapter: bool,
-                    dec_ffn_adapter: bool,
-                    cross_attn_adapter: bool):
+    def layers_requires_grad_(self, length_embed:bool):
+        for p in self.encoder.length_embedding.parameters():
+            p.requires_grad_(length_embed)
+
+    def save_finetuned(self,
+                    path:str,
+                    enc_ffn_adapter:bool=True,
+                    dec_ffn_adapter:bool=True,
+                    cross_attn_adapter:bool=True,
+                    length_embed:bool=True):
 
         state_dict = self.state_dict()
         saving_keys = []
@@ -204,6 +211,10 @@ class MixAdapterTransformer(nn.Module):
                 k = f"decoder.layer.{i}.cross_attn_adapter"
                 saving_keys.extend([key for key in state_dict.keys() if key.startswith(k)])
 
+        if length_embed:
+            k = "encoder.length_embedding"
+            saving_keys.extend([key for key in state_dict.keys() if key.startswith(k)])
+
         saving = {}
         for k in saving_keys:
             saving.update({k: state_dict[k]})
@@ -212,7 +223,7 @@ class MixAdapterTransformer(nn.Module):
             print(f"saving: {saving.keys()}")
             torch.save(saving, path)
 
-    def load_adapter(self, path: str = None, map_location="cuda:0"):
+    def load_finetuned(self, path:str=None, map_location="cuda:0"):
         # simple loading; saving is very important
         state_dict = torch.load(path, map_location=map_location)
         self.load_state_dict(state_dict, strict=False)

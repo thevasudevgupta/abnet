@@ -1,20 +1,25 @@
 # __author__ = "Vasudev Gupta"
 
 import torch
+import os
 import argparse
+import wandb
 
 from dataloader import DataLoader
-import config
-
 from trainer import Trainer
+from torch_trainer import TrainerConfig
 from modeling import TransformerMaskPredict
 from utils import Logger
+import config
 
 if __name__ == "__main__":
 
     # setup config
-    trainer_config = config.trainer_config.IWSLT14
-    transformer_config = config.transformer_config.IWSLT14
+    args = config.tr_iwslt14
+    trainer_config = TrainerConfig.from_default()
+    trainer_config.update(args.__dict__)
+
+    transformer_config = config.model_iwslt14
 
     # setup transformer for mask-predict
     model = TransformerMaskPredict(transformer_config)
@@ -29,13 +34,18 @@ if __name__ == "__main__":
 
     # testing on test-data
     tst_loss = trainer.evaluate(test_dataset)
-    wandb.log(dict(tst_loss=tst_loss))
+    wandb.log({"tst_loss": tst_loss})
 
-    if trainer_config.save_adapter_path:
-        trainer.model.save_adapter(f"{trainer_config.base_dir}/{trainer_config.save_adapter_path}", 
-                    trainer_config.enc_ffn_adapter, 
-                    trainer_config.dec_ffn_adapter,
-                    trainer_config.cross_attn_adapter)
+    finetuned_path = trainer_config.save_finetuned_path
+    if finetuned_path:
+        save_path = os.path.join(trainer_config.base_dir, finetuned_path)
+        trainer.model.save_finetuned(save_path)
+
+    # if args.mode == "infer":
+    #     model.from_pretrained("vasudevgupta/abnet-iwslt14")
+    #     predictor = MaskPredict(model, iterations=args.iterations)
+        
+    #     predictor.generate()
 
     # logging bleu and predictions
     logger = Logger(trainer, dl, trainer_config.batch_size, len(dl.val_src))

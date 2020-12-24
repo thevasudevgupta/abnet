@@ -1,7 +1,7 @@
 # __author__ = 'Vasudev Gupta'
 
 from dataclasses import dataclass, replace
-import torch
+
 
 @dataclass
 class Config:

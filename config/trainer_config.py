@@ -58,11 +58,11 @@ class TrainerConfig(DefaultArgs):
 main = TrainerConfig()
 
 IWSLT14 = TrainerConfig(tr_src_file="data/iwslt14/iwslt14.tokenized.de-en/train.de",
-                    tr_tgt_file="iwslt14/iwslt14.tokenized.de-en/train.en",
+                    tr_tgt_file="data/iwslt14/iwslt14.tokenized.de-en/train.en",
                     val_src_file="data/iwslt14/iwslt14.tokenized.de-en/valid.de",
-                    val_tgt_file="iwslt14/iwslt14.tokenized.de-en/valid.en",
+                    val_tgt_file="data/iwslt14/iwslt14.tokenized.de-en/valid.en",
                     tst_src_file="data/iwslt14/iwslt14.tokenized.de-en/test.de",
-                    tst_tgt_file="iwslt14/iwslt14.tokenized.de-en/test.en",
+                    tst_tgt_file="data/iwslt14/iwslt14.tokenized.de-en/test.en",
                     wandb_run_name="iwslt14-157K,7K",
                     base_dir="iwslt14-157K,7K",
                     tr_max_samples=-1,

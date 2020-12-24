@@ -1,9 +1,8 @@
 # __author__ = 'Vasudev Gupta'
+
 import numpy as np
 import torch
-from sklearn.model_selection import train_test_split
 from transformers import BertTokenizer
-
 
 class CustomDataset(torch.utils.data.Dataset):
 
@@ -28,8 +27,7 @@ class DataLoader(object):
         self.enc_tokenizer = BertTokenizer.from_pretrained(transformer_config["encoder_id"])
         self.dec_tokenizer = BertTokenizer.from_pretrained(transformer_config["decoder_id"])
 
-        self.enc_tokenizer.add_tokens(transformer_config.length_token)
-        self.length_id = self.enc_tokenizer.convert_tokens_to_ids(transformer_config.length_token)
+        self.length_id = transformer_config["length_id"]
 
         # encoder based
         self.cls_id = self.enc_tokenizer.convert_tokens_to_ids(self.enc_tokenizer.cls_token)

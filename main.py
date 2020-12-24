@@ -4,16 +4,17 @@ import torch
 import argparse
 
 from dataloader import DataLoader
+import config
+
 from trainer import Trainer
 from modeling import TransformerMaskPredict
-import config
 from utils import Logger
 
 if __name__ == "__main__":
 
     # setup config
-    trainer_config = config.main
-    transformer_config = config.IWSLT14
+    trainer_config = config.trainer_config.IWSLT14
+    transformer_config = config.transformer_config.IWSLT14
 
     # setup transformer for mask-predict
     model = TransformerMaskPredict(transformer_config)

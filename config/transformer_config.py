@@ -1,6 +1,6 @@
 # __author__ = 'Vasudev Gupta'
 
-class Config(object):
+class Dict(object):
 
     def __init__(self, **kwargs):
         self.kwargs = kwargs
@@ -13,8 +13,13 @@ class Config(object):
     def __repr__(self):
         return f"ModelConfig({self.kwargs})"
 
+    def get(self, k, op=None):
+        if not hasattr(self, k):
+            return op
+        return getattr(self, k)
+
 # IWSLT14 De-En
-IWSLT14 = Config(encoder_id="bert-base-german-cased",
+IWSLT14 = Dict(encoder_id="bert-base-german-cased",
             decoder_id="bert-base-uncased",
             enc_ffn_adapter=True,
             dec_ffn_adapter=True,
@@ -24,15 +29,15 @@ IWSLT14 = Config(encoder_id="bert-base-german-cased",
             # its fine to overlap with pad token since embedding layer is different in both cases
             length_id=0,
             num_lengths=512,
-            enc_ffn_adapter_config=dict(hidden_size=768,
+            enc_ffn_adapter_config=Dict(hidden_size=768,
                                     intermediate_size=512,
                                     layer_norm_eps=1e-12
             ),
-            dec_ffn_adapter_config=dict(hidden_size=768,
+            dec_ffn_adapter_config=Dict(hidden_size=768,
                                     intermediate_size=2048,
                                     layer_norm_eps=1e-12
             ),
-            cross_attn_adapter_config=dict(hidden_size=768,
+            cross_attn_adapter_config=Dict(hidden_size=768,
                                         layer_norm_eps=1e-12,
                                         hidden_dropout_prob=0.1,
                                         num_attention_heads=12,

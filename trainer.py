@@ -35,7 +35,7 @@ class Trainer(TorchTrainer):
 
     def training_epoch_end(self, epoch, losses):
 
-        finetuned_path = self.args.finetuned_path
+        finetuned_path = self.args.save_finetuned_path
         if finetuned_path:
             save_path = os.path.join(self.args.base_dir, f"e{epoch}-{finetuned_path}")
             self.model.save_finetuned(save_path)

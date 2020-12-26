@@ -89,12 +89,12 @@ class MixAdapterBL(object):
     def add_ffn_adapter_(self, adapter_config):
         self.add_ffn_adapter = True
         self.ffn_adapter = FFNAdapter(adapter_config)
-        return "ADDED"
+        return "adapter ADDED"
 
     def ffn_adapter_forward(self, x):
         return self.ffn_adapter(x)
 
-    def adapter_requires_grad(self, ffn_adapter, cross_attn_adapter=None):
+    def adapter_requires_grad_(self, ffn_adapter, cross_attn_adapter=None):
 
         m1 = "ffn_adapter ADD first"
         m2 = "cross-attn_adapter ADD first"
@@ -106,7 +106,7 @@ class MixAdapterBL(object):
             if ffn_adapter:
                 m1 = "ffn_adapter trainable"
 
-        if self.cross_attn_adapter:
+        if self.add_cross_attn_adapter:
             m2 = "cross-attn_adapter NOT trainable"
             for param in self.cross_attn_adapter.parameters():
                 param.requires_grad_(cross_attn_adapter)
@@ -134,20 +134,21 @@ class MixAdapterTMP(nn.Module):
         m3 = "encoder ffn_adapter NOT added"
 
         if cross_attn_adapter:
-            n = len(self.decoder.layer)
+            n = len(self.decoder.encoder.layer)
             for i in range(n):
-                m1 = self.decoder.layer[i].add_cross_attn_adapter_(cross_attn_adapter_config)
+                m1 = self.decoder.encoder.layer[i].add_cross_attn_adapter_(cross_attn_adapter_config)
+            m1 = "Cross-attn " + m1
 
         if dec_ffn_adapter:
-            n = len(self.decoder.layer)
+            n = len(self.decoder.encoder.layer)
             for i in range(n):
-                m2 = self.decoder.layer[i].add_ffn_adapter_(dec_ffn_adapter_config)
+                m2 = self.decoder.encoder.layer[i].add_ffn_adapter_(dec_ffn_adapter_config)
             m2 = "decoder " + m2
 
         if enc_ffn_adapter:
-            n = len(self.encoder.layer)
+            n = len(self.encoder.encoder.layer)
             for i in range(n):
-                m3 = self.encoder.layer[i].add_ffn_adapter_(enc_ffn_adapter_config)
+                m3 = self.encoder.encoder.layer[i].add_ffn_adapter_(enc_ffn_adapter_config)
             m3 = "encoder " + m3
 
         print("==========Adapter ADDN status==========")
@@ -165,14 +166,14 @@ class MixAdapterTMP(nn.Module):
         m2 = "decoder ffn_adapter NOT activated"
         m3 = "encoder ffn_adapter NOT activated"
 
-        n = len(self.encoder.layer)
+        n = len(self.encoder.encoder.layer)
         for i in range(n):
-            m1, _ = self.encoder.layer[i].adapter_requires_grad_(enc_ffn_adapter)
+            m1, _ = self.encoder.encoder.layer[i].adapter_requires_grad_(enc_ffn_adapter)
             m1 = "encoder " + m1
 
-        n = len(self.decoder.layer)
+        n = len(self.decoder.encoder.layer)
         for i in range(n):
-            m2, m3 = self.decoder.layer[i].adapter_requires_grad_(dec_ffn_adapter, cross_attn_adapter)
+            m2, m3 = self.decoder.encoder.layer[i].adapter_requires_grad_(dec_ffn_adapter, cross_attn_adapter)
             m2 = "decoder " + m2
 
         print("==========Adapter activation status==========")
@@ -180,7 +181,7 @@ class MixAdapterTMP(nn.Module):
         print("=============================================")
 
     def layers_requires_grad_(self, length_embed:bool):
-        for p in self.encoder.length_embedding.parameters():
+        for p in self.encoder.embeddings.length_embedding.parameters():
             p.requires_grad_(length_embed)
 
     def save_finetuned(self,
@@ -194,25 +195,25 @@ class MixAdapterTMP(nn.Module):
         saving_keys = []
 
         if enc_ffn_adapter:
-            num = len(self.encoder.layer)
+            num = len(self.encoder.encoder.layer)
             for i in range(num):
-                k = f"encoder.layer.{i}.ffn_adapter"
+                k = f"encoder.encoder.layer.{i}.ffn_adapter"
                 saving_keys.extend([key for key in state_dict.keys() if key.startswith(k)])
 
         if dec_ffn_adapter:
-            num = len(self.decoder.layer)
+            num = len(self.decoder.encoder.layer)
             for i in range(num):
-                k = f"decoder.layer.{i}.ffn_adapter"
+                k = f"decoder.encoder.layer.{i}.ffn_adapter"
                 saving_keys.extend([key for key in state_dict.keys() if key.startswith(k)])
 
         if cross_attn_adapter:
-            num = len(self.decoder.layer)
+            num = len(self.decoder.encoder.layer)
             for i in range(num):
-                k = f"decoder.layer.{i}.cross_attn_adapter"
+                k = f"decoder.encoder.layer.{i}.cross_attn_adapter"
                 saving_keys.extend([key for key in state_dict.keys() if key.startswith(k)])
 
         if length_embed:
-            k = "encoder.length_embedding"
+            k = "encoder.embeddings.length_embedding"
             saving_keys.extend([key for key in state_dict.keys() if key.startswith(k)])
 
         saving = {}

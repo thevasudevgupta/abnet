@@ -106,7 +106,7 @@ def load_tf_weights_in_bert(model, config, tf_checkpoint_path):
 class BertEmbeddings(nn.Module):
     """Construct the embeddings from word, position and token_type embeddings."""
 
-    def __init__(self, config):
+    def __init__(self, config, num_lengths=None, add_length_embedding=None):
         super().__init__()
         self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=config.pad_token_id)
         self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size)
@@ -120,7 +120,18 @@ class BertEmbeddings(nn.Module):
         # position_ids (1, len position emb) is contiguous in memory and exported when serialized
         self.register_buffer("position_ids", torch.arange(config.max_position_embeddings).expand((1, -1)))
 
+        # length embedding stuff
+        self.add_length_embedding = add_length_embedding
+        if add_length_embedding:
+            self.length_embedding = nn.Embedding(num_embeddings=num_lengths, embedding_dim=config.hidden_size)
+
     def forward(self, input_ids=None, token_type_ids=None, position_ids=None, inputs_embeds=None):
+        
+        # length embedding stuff
+        if self.add_length_embedding:
+            length_ids = input_ids[:, :1]
+            input_ids = input_ids[:, 1:]
+
         if input_ids is not None:
             input_shape = input_ids.size()
         else:
@@ -142,6 +153,12 @@ class BertEmbeddings(nn.Module):
         embeddings = inputs_embeds + position_embeddings + token_type_embeddings
         embeddings = self.LayerNorm(embeddings)
         embeddings = self.dropout(embeddings)
+
+        # length embedding stuff
+        if self.add_length_embedding:
+            length_embed = self.length_embedding(length_ids)
+            embeddings = torch.cat([length_embed, embeddings], dim=1)
+
         return embeddings
 
 class BertLayer(nn.Module, MixAdapterBL):
@@ -330,20 +347,19 @@ class BertModel(BertPreTrainedModel):
     input to the forward pass.
     """
 
-    def __init__(self, config, num_lengths=512, add_length_embedding=False, add_pooling_layer=False):
+    def __init__(self, config, num_lengths=None, add_length_embedding=False, add_pooling_layer=False):
         super().__init__(config)
         self.config = config
 
-        self.embeddings = BertEmbeddings(config)
+        self.embeddings = BertEmbeddings(config, num_lengths, add_length_embedding)
         self.encoder = BertEncoder(config)
-
-        self.add_length_embedding = add_length_embedding
-        if add_length_embedding:
-            self.length_embedding = nn.Embedding(num_embeddings=num_lengths, embedding_dim=config.hidden_size)
 
         self.pooler = BertPooler(config) if add_pooling_layer else None
 
         self.init_weights()
+
+        # length embedding stuff
+        self.add_length_embedding = add_length_embedding
 
     def get_input_embeddings(self):
         return self.embeddings.word_embeddings
@@ -403,8 +419,10 @@ class BertModel(BertPreTrainedModel):
 
         if attention_mask is None:
             attention_mask = torch.ones(input_shape, device=device)
-        if token_type_ids is None:
-            token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=device)
+
+        # TODO: remove redundant code
+        # if token_type_ids is None:
+        #     token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=device)
 
         # We can provide a self-attention mask of dimensions [batch_size, from_seq_length, to_seq_length]
         # ourselves in which case we just need to make it broadcastable to all heads.
@@ -429,12 +447,8 @@ class BertModel(BertPreTrainedModel):
         head_mask = self.get_head_mask(head_mask, self.config.num_hidden_layers)
 
         embedding_output = self.embeddings(
-            input_ids=input_ids[:, 1:], position_ids=position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds
+            input_ids=input_ids, position_ids=position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds
         )
-
-        if self.add_length_embedding:
-            length_embed = self.length_embedding(input_ids[:, :1])
-            embedding_output = torch.cat([length_embed, embedding_output], dim=1)
 
         # adapter stuff
         if (encoder_attention_mask is not None) and (encoder_hidden_states is not None):
@@ -454,6 +468,7 @@ class BertModel(BertPreTrainedModel):
         # must not use pooler output becauze CLS is 2nd token now
         pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
 
+        # length embedding stuff
         if self.add_length_embedding:
             return    {
                 "length_logits": sequence_output[:, :1, :],

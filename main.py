@@ -21,6 +21,8 @@ if __name__ == "__main__":
 
     transformer_config = config.model_iwslt14
 
+    print(transformer_config)
+
     # setup transformer for mask-predict
     model = TransformerMaskPredict(transformer_config)
 

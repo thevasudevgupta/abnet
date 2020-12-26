@@ -16,11 +16,11 @@ class Config:
     tst_src_file: str
 
     max_length: int = 32
-    max_target_length: int = 32
+    max_target_length: int = 40
     
-    tr_max_samples: int = -1
-    val_max_samples: int = -1
-    tst_max_samples: int = -1
+    tr_max_samples: int = 100
+    val_max_samples: int = 20
+    tst_max_samples: int = 20
 
     batch_size: int = 16
     lr: float = 1e-4
@@ -49,7 +49,5 @@ IWSLT14 = Config(tr_src_file="data/iwslt14/iwslt14.tokenized.de-en/train.de",
                 tst_src_file="data/iwslt14/iwslt14.tokenized.de-en/test.de",
                 tst_tgt_file="data/iwslt14/iwslt14.tokenized.de-en/test.en",
                 wandb_run_name="iwslt14-157K,7K",
-                base_dir="iwslt14-157K,7K",
-                tr_max_samples=-1,
-                val_max_samples=-1,
-                tst_max_samples=-1)
+                base_dir="iwslt14-157K,7K")
+

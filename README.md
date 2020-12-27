@@ -18,7 +18,7 @@ cd data/iwslt14
 bash prepare-iwslt14.sh
 
 # start training
-python main.py
+python train.py
 ```
 
 **Using trained model directly**
@@ -28,7 +28,14 @@ python main.py
 from modeling import TransformerMaskPredict
 
 # lets load model-weights from huggingface hub
-model = TransformerMaskPredict.from_pretrained("vasudevgupta/abnet-iwslt14-de-en")
+model_id = "vasudevgupta/abnet-iwslt14-de-en"
+model = TransformerMaskPredict.from_pretrained(model_id)
+# use this model for whatever task you want
+
+## OR
+
+# you can directly run existing script for inference
+sh scripts/infer_iwslt14_de_en.sh
 ```
 
 **Feel free to raise an issue incase you find some problem in this implementation.**

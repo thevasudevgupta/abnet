@@ -1,4 +1,4 @@
-python infer.py --model_id "abnet-iwslt14-de-en" \
+python infer.py --model_id "vasudevgupta/abnet-iwslt14" \
     --tr_tgt_file "data/iwslt14/iwslt14.tokenized.de-en/train.en" \
     --tr_src_file "data/iwslt14/iwslt14.tokenized.de-en/train.de" \
     --val_tgt_file "data/iwslt14/iwslt14.tokenized.de-en/valid.en" \
@@ -7,10 +7,10 @@ python infer.py --model_id "abnet-iwslt14-de-en" \
     --tst_src_file "data/iwslt14/iwslt14.tokenized.de-en/test.de" \
     --iterations 10 \
     --k 4 \
-    --batch_size 32 \
+    --batch_size 16 \
     --num_workers 4 \
-    --max_length 32 \
-    --max_target_length 32 \
-    --tr_max_samples 2000 \
-    --val_max_samples 2000 \
-    --tst_max_samples 2000
+    --max_length 48 \
+    --max_target_length 48 \
+    --tr_max_samples 20 \
+    --val_max_samples 20 \
+    --tst_max_samples 20

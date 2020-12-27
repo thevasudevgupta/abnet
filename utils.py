@@ -10,8 +10,7 @@ from data_utils.tokenizer import Tokenizer
 from data_utils.dataloader import DataLoader
 
 @torch.no_grad()
-def fetch_translations_and_bleu(self,
-                            model:nn.Module,
+def fetch_translations_and_bleu(model:nn.Module,
                             dataset:DataLoader, 
                             tokenizer:Tokenizer,
                             iterations=10,
@@ -35,9 +34,9 @@ def fetch_translations_and_bleu(self,
             batch[k] = batch[k].to(device)
 
         out = model.generate(**batch, iterations=iterations, tokenizer=tokenizer, k=k)
-        pred.extend(out["text"].tolist())
-        tgt.extend(tokenizer.batch_decode(batch["labels"], decoder=True))
-        src.extend(tokenizer.batch_decode(batch["input_ids"], encoder=True))
+        pred.extend(out["tgt_text"])
+        src.extend(tokenizer.batch_decode(batch["input_ids"], is_src_txt=True))
+        tgt.extend(tokenizer.batch_decode(batch["labels"], is_tgt_txt=True))
 
     # bleu score
     bleu = corpus_bleu(pred, [tgt]).score

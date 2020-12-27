@@ -48,5 +48,16 @@ iwslt14_de_en = Config(tr_src_file="data/iwslt14/iwslt14.tokenized.de-en/train.d
                 val_tgt_file="data/iwslt14/iwslt14.tokenized.de-en/valid.en",
                 tst_src_file="data/iwslt14/iwslt14.tokenized.de-en/test.de",
                 tst_tgt_file="data/iwslt14/iwslt14.tokenized.de-en/test.en",
-                wandb_run_name="iwslt14-157K,7K",
-                base_dir="iwslt14-157K,7K")
+                save_finetuned_path="abnet-iwslt14-de-en",
+                wandb_run_name="iwslt14-de-en",
+                base_dir="iwslt14-de-en")
+
+wmt16_ro_en = Config(tr_src_file="data/wmt16_ro_en/europarl-v8.ro-en.ro",
+                tr_tgt_file="data/wmt16_ro_en/europarl-v8.ro-en.en",
+                val_src_file="data/wmt16_ro_en/newsdev2016-roen-src.ro.sgm",
+                val_tgt_file="data/wmt16_ro_en/newsdev2016-roen-ref.en.sgm",
+                tst_src_file="data/wmt16_ro_en/newstest2016-enro-ref.ro.sgm",
+                tst_tgt_file="data/wmt16_ro_en/newstest2016-enro-src.en.sgm",
+                save_finetuned_path="abnet-wmt16-ro-en",
+                wandb_run_name="wmt16-ro-en",
+                base_dir="wmt16-ro-en")

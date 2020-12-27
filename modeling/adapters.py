@@ -6,6 +6,8 @@ from transformers.activations import ACT2FN
 
 from modeling.bert_layers import BertAttention
 
+import logging
+logger = logging.getLogger(__name__)
 
 class FFNAdapter(nn.Module):
 
@@ -156,9 +158,9 @@ class MixAdapterTMP(object):
                 m3 = self.encoder.encoder.layer[i].add_ffn_adapter_(enc_ffn_adapter_config)
             m3 = "encoder " + m3
 
-        print("==========Adapter ADDN status==========")
-        print(m1, "\n", m2, "\n", m3)
-        print("=============================================")
+        logger.info("==========Adapter ADDN status==========")
+        logger.info(m1, "\n", m2, "\n", m3)
+        logger.info("=============================================")
 
 
     def adapter_requires_grad_(self,
@@ -181,9 +183,9 @@ class MixAdapterTMP(object):
             m2, m3 = self.decoder.encoder.layer[i].adapter_requires_grad_(dec_ffn_adapter, cross_attn_adapter)
             m2 = "decoder " + m2
 
-        print("==========Adapter activation status==========")
-        print(m1, "\n", m2, "\n", m3)
-        print("=============================================")
+        logger.info("==========Adapter activation status==========")
+        logger.info(m1, "\n", m2, "\n", m3)
+        logger.info("=============================================")
 
     def layers_requires_grad_(self, length_embed:bool):
         for p in self.encoder.embeddings.length_embedding.parameters():

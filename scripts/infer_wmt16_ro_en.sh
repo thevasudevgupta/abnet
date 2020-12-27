@@ -1,0 +1,16 @@
+python infer.py --model_id "abnet-wmt16-ro-en" \
+    --tr_tgt_file "data/wmt16_ro_en/europarl-v8.ro-en.en" \
+    --tr_src_file "data/wmt16_ro_en/europarl-v8.ro-en.ro" \
+    --val_tgt_file "data/wmt16_ro_en/newsdev2016-roen-ref.en.sgm" \
+    --val_src_file "data/wmt16_ro_en/newsdev2016-roen-src.ro.sgm" \
+    --tst_tgt_file "data/wmt16_ro_en/newstest2016-enro-src.en.sgm" \
+    --tst_src_file "data/wmt16_ro_en/newstest2016-enro-ref.ro.sgm" \
+    --iterations 10 \
+    --k 4 \
+    --batch_size 32 \
+    --num_workers 4 \
+    --max_length 32 \
+    --max_target_length 32 \
+    --tr_max_samples 2000 \
+    --val_max_samples 2000 \
+    --tst_max_samples 2000

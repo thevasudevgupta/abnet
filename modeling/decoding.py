@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+from tqdm import tqdm
 
 class MaskPredict(object):
 
@@ -15,11 +16,15 @@ class MaskPredict(object):
                 encoder_attention_mask:torch.tensor,
                 tokenizer,
                 iterations=10,
-                k=1):
+                k=1,
+                **kwargs):
+
+        self.eval()
 
         # TODO fix K
 
         # TODO check device of tensor
+        # add extra head in lengths output & save it
 
         self.iterations = iterations
         self.pad_token = tokenizer.tgt_pad_token
@@ -30,21 +35,28 @@ class MaskPredict(object):
                     return_dict=True)
         length_logits = x.pop("length_logits")
         x = torch.cat([length_logits, x.pop("last_hidden_state")], dim=1)
-        
-        _, lengths = length_logits.max(dim=1)
 
-        tgt_tokens = [[mask_token]*t for t in lengths.squeeze()]
-        tgt_tokens = [self._pad(ls, lengths.max(), pad_token) for ls in tgt_tokens]
+        _, lengths = length_logits.max(dim=-1)
 
-        decoder_attention_mask = [[1]*t for t in lengths.squeeze()]
-        decoder_attention_mask = [self._pad(ls, lengths.max(), 0) for ls in tgt_tokens]
+        # TODO rm next line
+        lengths = torch.ones(lengths.size(), device=lengths.device)*400.
+        lengths = lengths.long()
+        # 
+
+        tgt_tokens = [[self.mask_token]*t for t in lengths.squeeze().tolist()]
+        tgt_tokens = [self._pad(ls, lengths.max(), self.pad_token) for ls in tgt_tokens]
+        tgt_tokens = torch.tensor(tgt_tokens, device=x.device)
+
+        decoder_attention_mask = [[1]*t for t in lengths.squeeze().tolist()]
+        decoder_attention_mask = [self._pad(ls, lengths.max(), 0) for ls in decoder_attention_mask]
+        decoder_attention_mask = torch.tensor(decoder_attention_mask, device=x.device)
 
         tgt_tokens, lprobs = self._generate(x, encoder_attention_mask, tgt_tokens, decoder_attention_mask)
 
         output = {
             "tgt_tokens": tgt_tokens,
             "sequence_logprobs": lprobs,
-            "tgt_text": tokenizer.batch_decode(tgt_tokens, skip_special_tokens=True)
+            "tgt_text": tokenizer.batch_decode(tgt_tokens, is_tgt_txt=True, skip_special_tokens=True)
         }
         return output
 
@@ -65,7 +77,7 @@ class MaskPredict(object):
         tgt_tokens.view(-1)[pad_mask.view(-1)] = self.pad_token
         token_probs.view(-1)[pad_mask.view(-1)] = 1.0
 
-        for counter in range(1, self.iterations):
+        for counter in tqdm(range(1, self.iterations), desc="iterating .. ", total=self.iterations):
 
             num_mask = (seqlens.float() * (1.0 - (counter / self.iterations))).long()
             mask_ind = self.select_worst(token_probs, num_mask)

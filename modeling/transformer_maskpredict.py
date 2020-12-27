@@ -2,6 +2,7 @@
 
 import os
 import json
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -121,18 +122,28 @@ class TransformerMaskPredict(nn.Module, MaskPredict, MixAdapterTMP):
         """
         model_id = pretrained_model_name_or_path
 
-        config_url = hf_bucket_url(model_id, filename="config.json")
-        config_file = cached_path(config_url)
+        if len(model_id.split("/")) == 1:
+            name = model_id
+        else:
+            username, name = model_id.split("/")
+
+        if name in os.listdir():
+            print("LOADING config & model weights from local directory")
+            config_file = os.path.join(name, "config.yaml")
+            model_file = os.path.join(name, "pytorch_model.bin")
+        else:
+            config_url = hf_bucket_url(model_id, filename="config.json")
+            config_file = cached_path(config_url)
+            # downloading & load only the adapter weights from huggingface hub
+            # and corresponding bert weights will be loaded when class is getting initiated
+            model_url = hf_bucket_url(model_id, filename="pytorch_model.bin")
+            model_file = cached_path(model_url)
+
         with open(config_file, "r", encoding="utf-8") as f:
             config = json.load(f)
         config = Dict.from_nested_dict(config)
 
-        # downloading & load only the adapter weights from huggingface hub
-        # and corresponding bert weights will be loaded when class is getting initiated
-        model_url = hf_bucket_url(model_id, filename="pytorch_model.bin")
-        model_file = cached_path(model_url)
         state_dict = torch.load(model_file, map_location="cpu")
-
         # randomly initializing model from given config with bert weights restored
         model = cls(config)
         # now restoring adapter weights

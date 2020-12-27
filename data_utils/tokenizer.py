@@ -52,11 +52,11 @@ class Tokenizer(object):
 
         return out
 
-    def batch_decode(self, batch:torch.Tensor, encoder=False, decoder=False, skip_special_tokens=False):
-        if encoder:
+    def batch_decode(self, batch:torch.Tensor, is_src_txt=False, is_tgt_txt=False, skip_special_tokens=False):
+        if is_src_txt:
             out = self.encoder_tokenizer.batch_decode(batch, skip_special_tokens=skip_special_tokens)
-        if decoder:
+        elif is_tgt_txt:
             out = self.decoder_tokenizer.batch_decode(batch, skip_special_tokens=skip_special_tokens)
-        if not (encoder or decoder):
+        else:
             raise ValueError("specify either of encoder or decoder to be True")
         return out

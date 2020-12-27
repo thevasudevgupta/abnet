@@ -42,7 +42,7 @@ class Config:
     project_name: str = 'parallel-decoder-paper'
     wandb_run_name: str = None
 
-IWSLT14 = Config(tr_src_file="data/iwslt14/iwslt14.tokenized.de-en/train.de",
+iwslt14_de_en = Config(tr_src_file="data/iwslt14/iwslt14.tokenized.de-en/train.de",
                 tr_tgt_file="data/iwslt14/iwslt14.tokenized.de-en/train.en",
                 val_src_file="data/iwslt14/iwslt14.tokenized.de-en/valid.de",
                 val_tgt_file="data/iwslt14/iwslt14.tokenized.de-en/valid.en",
@@ -50,4 +50,3 @@ IWSLT14 = Config(tr_src_file="data/iwslt14/iwslt14.tokenized.de-en/train.de",
                 tst_tgt_file="data/iwslt14/iwslt14.tokenized.de-en/test.en",
                 wandb_run_name="iwslt14-157K,7K",
                 base_dir="iwslt14-157K,7K")
-

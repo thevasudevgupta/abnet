@@ -1,6 +1,7 @@
 __author__ = "Vasudev Gupta"
 
 from modeling.transformer_maskpredict import TransformerMaskPredict
+from modeling.utils import Dict
 
 """
 bert code is taken from HuggingFace directly (below files)

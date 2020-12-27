@@ -13,7 +13,7 @@ cd cs6910-project
 **Setting up dataset and training scripts**
 
 ```python
-# Prepare IWSLT14 dataset 
+# download & prepare IWSLT14 dataset 
 cd data/iwslt14
 bash prepare-iwslt14.sh
 
@@ -30,8 +30,8 @@ from modeling import TransformerMaskPredict
 
 transformer_config = config.model_iwslt14
 model = TransformerMaskPredict(transformer_config)
-model.load("abnet-iwslt14.pt")
-model.eval()
+# lets load model weights from huggingface hub
+model.from_pretrained("vasudevgupta/abnet-iwslt14-de-en")
 ```
 
 **Feel free to raise an issue incase you find some problem in this implementation.**

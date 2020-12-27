@@ -340,6 +340,7 @@ class TrainingLoop(ABC, TrainerSetup):
             "wandb_off": args.wandb_off,
             "wandb_dir": self.base_dir
         }
+        self.extra_logging = None
 
         if self.precision == 'float16':
             self._setup_half()
@@ -417,6 +418,12 @@ class TrainingLoop(ABC, TrainerSetup):
             print('Training with mixed16')
             return torch.cuda.amp.GradScaler()
 
+    def log(self, **kwargs):
+        """
+        This method is useful in case you need to log something which is not logger automatically
+        """
+        self.extra_logging = kwargs
+
     @torch.no_grad()
     def empty_grad(self):
         for param in self.model.parameters():
@@ -482,10 +489,13 @@ class TrainingLoop(ABC, TrainerSetup):
                         else:
                             self.optimizer.step()
 
-                    wandb.log({
-                    'global_steps': steps,
-                    'step_tr_loss': tr_loss
-                    }, commit=True)
+                    step_logging_args = {
+                                        'global_steps': steps,
+                                        'step_tr_loss': tr_loss
+                                    }
+                    if self.extra_logging:
+                        step_logging_args.update(self.extra_logging)
+                    wandb.log(step_logging_args, commit=True)
 
                     steps += 1
                     pbar.set_postfix(tr_loss=tr_loss)

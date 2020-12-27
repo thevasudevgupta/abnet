@@ -1,38 +1,48 @@
 # __author__ = "Vasudev Gupta"
 
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from modeling.adapters import MixAdapterTMP
 from modeling.modeling_bert import BertModel
+from modeling.decoding import MaskPredict
+from modeling.utils import Dict
 
-class TransformerMaskPredict(MixAdapterTMP):
+# setting up `from_pretrained` method
+from transformers.file_utils import hf_bucket_url, cached_path
+import json
+
+class TransformerMaskPredict(nn.Module, MixAdapterTMP):
 
     def __init__(self, config):
         super().__init__()
+        MixAdapterTMP.__init__(self)
 
-        self.encoder = BertModel.from_pretrained(config["encoder_id"], num_lengths=config.num_lengths, add_length_embedding=True)
-        self.decoder = BertModel.from_pretrained(config["decoder_id"])
+        self.config = config
+
+        self.encoder = BertModel.from_pretrained(self.config["encoder_id"], num_lengths=self.config.num_lengths, add_length_embedding=True)
+        self.decoder = BertModel.from_pretrained(self.config["decoder_id"])
 
         # self.register_buffer("final_layer_bias", torch.zeros(1, self.decoder.embeddings.word_embeddings.num_embeddings))
 
         for param in self.parameters():
             param.requires_grad_(False)
 
-        self.add_adapter_(config.enc_ffn_adapter,
-                        config.dec_ffn_adapter,
-                        config.cross_attn_adapter,
-                        config.enc_ffn_adapter_config,
-                        config.dec_ffn_adapter_config,
-                        config.cross_attn_adapter_config)
+        self.add_adapter_(self.config.enc_ffn_adapter,
+                        self.config.dec_ffn_adapter,
+                        self.config.cross_attn_adapter,
+                        self.config.enc_ffn_adapter_config,
+                        self.config.dec_ffn_adapter_config,
+                        self.config.cross_attn_adapter_config)
 
         # now encoder will have ffn-adapter
         # decoder will have ffn-adapter & cross-attn-adapter
 
-        self.adapter_requires_grad_(config.enc_ffn_adapter,
-                                config.dec_ffn_adapter,
-                                config.cross_attn_adapter)
+        self.adapter_requires_grad_(self.config.enc_ffn_adapter,
+                                self.config.dec_ffn_adapter,
+                                self.config.cross_attn_adapter)
         self.layers_requires_grad_(True)
 
     def forward(self, input_ids, encoder_attention_mask, decoder_input_ids=None, decoder_attention_mask=None, labels=None, return_dict=True):
@@ -81,14 +91,6 @@ class TransformerMaskPredict(MixAdapterTMP):
         while len(ls) < max_len:
             ls.append(pad)
         return ls
-    
-    def save(self, path:str):
-        saving = self.state_dict()
-        torch.save(saving, path)
-
-    def load(self, path:str, map_location=torch.device("cuda")):
-        state_dict = torch.load(path, map_location=map_location)
-        self.load_state_dict(state_dict)
 
     def compute_loss(self, final_logits, labels, length_logits, eps=0.1, reduction="sum"):
         # loss_fn = LossFunc(eps=eps, reduction=reduction)
@@ -96,6 +98,58 @@ class TransformerMaskPredict(MixAdapterTMP):
         final_logits = final_logits.view(-1, final_logits.size(-1))
         labels = labels.view(-1)
         return nn.CrossEntropyLoss()(final_logits, labels), None, None
+
+    def save_pretrained(self, save_directory:str):
+        """
+            We are saving only the finetuned weights ; bert-weights in encoder and decoder are not getting saved 
+            and can be loaded directly from huggingface hub
+        """
+
+        if save_directory not in os.listdir(): 
+            os.makedirs(save_directory)
+
+        # saving config
+        path = os.path.join(save_directory, "config.json")
+        with open(path, "w") as f:
+            json.dump(self.config, f)
+
+        # saving only the adapter weights and length embedding
+        path = os.path.join(save_directory, "pytorch_model.bin")
+        self.save_finetuned(path, print_status=False)
+
+        return True
+
+    @classmethod
+    def from_pretrained(cls, pretrained_model_name_or_path:str):
+        """
+            Setting up this method will enable to load directly from huggingface hub just like other HF models are loaded
+        """
+        model_id = pretrained_model_name_or_path
+
+        config_url = hf_bucket_url(model_id, filename="config.json")
+        config_file = cached_path(config_url)
+        with open(config_file, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        config = Dict.from_nested_dict(config)
+
+        # downloading & load only the adapter weights from huggingface hub
+        # and corresponding bert weights will be loaded when class is getting initiated
+        model_url = hf_bucket_url(model_id, filename="pytorch_model.bin")
+        model_file = cached_path(model_url)
+        state_dict = torch.load(model_file, map_location="cpu")
+
+        # randomly initializing model from given config with bert weights restored
+        model = cls(config)
+        # now restoring adapter weights
+        model.load_state_dict(state_dict, strict=False)
+
+        return model
+
+    def generate(self, **kwargs):
+        """
+            This method is not available and MaskPredict class should be used instead
+        """
+        raise NotImplementedError
 
 class LossFunc(nn.Module):
 

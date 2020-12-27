@@ -1,7 +1,7 @@
 # __author__ = 'Vasudev Gupta'
 
 import torch
-from torch_trainer import TorchTrainer
+from training.torch_trainer import TorchTrainer
 from tqdm import tqdm
 import os
 
@@ -24,6 +24,7 @@ class Trainer(TorchTrainer):
             batch[k] = batch[k].to(self.device)
         # with torch.cuda.amp.autocast((self.precision=='mixed_16')):
         out = self.model(**batch, return_dict=True)
+        self.log(length_loss=out["length_loss"], translation_loss=out["translation_loss"])
         return out["loss"]
 
     @torch.no_grad()
@@ -31,6 +32,7 @@ class Trainer(TorchTrainer):
         for k in batch:
             batch[k] = batch[k].to(self.device)
         out = self.model(**batch, return_dict=True)
+        self.log(length_loss=out["length_loss"], translation_loss=out["translation_loss"])
         return out["loss"]
 
     def training_epoch_end(self, epoch, losses):

@@ -1,27 +1,31 @@
 # __author__ = "Vasudev Gupta"
 
-import torch
-import os
-import argparse
+import yaml
 import wandb
+import os
 
 from dataloader import DataLoader
-from trainer import Trainer
-from torch_trainer import TrainerConfig
-from modeling import TransformerMaskPredict
-from utils import Logger
-import config
+import training
+from training import Trainer, TrainerConfig, Logger
+from modeling import TransformerMaskPredict, Dict
+
+TRAINING_ID = "iwslt14_de_en"
+
+TRANSFORMER_CONFIG_FILE = os.path.join("transformer_config", f"{TRAINING_ID}.yaml")
+TRAINER_CONFIG = getattr(training, TRAINING_ID)
 
 if __name__ == "__main__":
 
-    # setup config
-    args = config.tr_iwslt14
-    trainer_config = TrainerConfig.from_default()
-    trainer_config.update(args.__dict__)
-
-    transformer_config = config.model_iwslt14
-
+    # setting config of transformer
+    transformer_config = yaml.safe_load(open(TRANSFORMER_CONFIG_FILE, "r"))
+    transformer_config = Dict.from_nested_dict(transformer_config)
     print(transformer_config)
+
+    # setup training config
+    trainer_config = TrainerConfig.from_default()
+    trainer_config.update(TRAINER_CONFIG.__dict__)
+
+    print(trainer_config)
 
     # setup transformer for mask-predict
     model = TransformerMaskPredict(transformer_config)
@@ -33,6 +37,9 @@ if __name__ == "__main__":
     # setting-up system for training
     trainer = Trainer(model, trainer_config)
     trainer.fit(tr_dataset, val_dataset)
+
+    # TODO
+    # pass input twice and check whether same output
 
     # testing on test-data
     tst_loss = trainer.evaluate(test_dataset)

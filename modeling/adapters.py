@@ -61,6 +61,9 @@ class CrossAttnAdapter(nn.Module):
 class MixAdapterBL(object):
 
     def __init__(self):
+        """
+            Inherit BertLayer from this class to add support for adapters
+        """
         self.add_cross_attn_adapter = False
         self.add_ffn_adapter = False
 
@@ -116,10 +119,12 @@ class MixAdapterBL(object):
         return m1, m2
 
 
-class MixAdapterTMP(nn.Module):
+class MixAdapterTMP(object):
 
     def __init__(self):
-        super().__init__()
+        """
+            Inherit TransformerMaskPredict from this class to add support for adapters
+        """
 
     def add_adapter_(self, 
                 enc_ffn_adapter, 
@@ -189,7 +194,8 @@ class MixAdapterTMP(nn.Module):
                     enc_ffn_adapter:bool=True,
                     dec_ffn_adapter:bool=True,
                     cross_attn_adapter:bool=True,
-                    length_embed:bool=True):
+                    length_embed:bool=True,
+                    print_status:bool=True):
 
         state_dict = self.state_dict()
         saving_keys = []
@@ -221,7 +227,7 @@ class MixAdapterTMP(nn.Module):
             saving.update({k: state_dict[k]})
 
         if path:
-            print(f"saving: {saving.keys()}")
+            if print_status: print(f"saving: {saving.keys()}")
             torch.save(saving, path)
 
     def load_finetuned(self, path:str=None, map_location="cuda:0"):

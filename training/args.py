@@ -28,8 +28,8 @@ class Config:
     base_dir: str = "base_dir"
     num_workers: int = 2
 
-    load_finetuned_path: str = None # "wts.pt"
-    save_finetuned_path: str = None # "wts.pt"
+    load_finetuned_path: str = None # "model_id"
+    save_finetuned_path: str = None # "model_id"
 
     max_epochs: int = 3
     accumulation_steps: int = 1

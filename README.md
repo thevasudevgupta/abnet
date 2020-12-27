@@ -25,13 +25,10 @@ python main.py
 
 ```python
 # Using model for inference
-import config
 from modeling import TransformerMaskPredict
 
-transformer_config = config.model_iwslt14
-model = TransformerMaskPredict(transformer_config)
-# lets load model weights from huggingface hub
-model.from_pretrained("vasudevgupta/abnet-iwslt14-de-en")
+# lets load model-weights from huggingface hub
+model = TransformerMaskPredict.from_pretrained("vasudevgupta/abnet-iwslt14-de-en")
 ```
 
 **Feel free to raise an issue incase you find some problem in this implementation.**

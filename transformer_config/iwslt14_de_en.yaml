@@ -4,10 +4,8 @@ decoder_id: bert-base-uncased
 enc_ffn_adapter: True
 dec_ffn_adapter: True
 cross_attn_adapter: True
-mask_token: [MASK]
-pad_token: [PAD]
 # its fine to overlap with pad token since embedding layer is different in both cases
-length_id: 0
+length_token: 0
 num_lengths: 512
 enc_ffn_adapter_config:
   hidden_size: 768

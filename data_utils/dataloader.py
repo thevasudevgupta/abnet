@@ -1,7 +1,6 @@
 # __author__ = 'Vasudev Gupta'
 
 import torch
-from transformers import BertTokenizer
 
 
 class TranslationDataset(torch.utils.data.Dataset):
@@ -23,23 +22,15 @@ class TranslationDataset(torch.utils.data.Dataset):
 
 class DataLoader(object):
 
-    def __init__(self, transformer_config, args):
-
-        self.enc_tokenizer = BertTokenizer.from_pretrained(transformer_config["encoder_id"])
-        self.dec_tokenizer = BertTokenizer.from_pretrained(transformer_config["decoder_id"])
-
-        self.length_id = transformer_config["length_id"]
-
-        # encoder based
-        self.cls_id = self.enc_tokenizer.convert_tokens_to_ids(self.enc_tokenizer.cls_token)
-        # decoder based
-        self.sep_id = self.dec_tokenizer.convert_tokens_to_ids(self.dec_tokenizer.sep_token)
+    def __init__(self, args, tokenizer):
 
         self.batch_size = args.batch_size
         self.num_workers = args.num_workers
 
         self.max_length = args.max_length
         self.max_target_length = args.max_target_length
+
+        self.tokenizer = tokenizer
 
         # prepare_data args
         self.tr_max_samples = args.tr_max_samples
@@ -113,54 +104,19 @@ class DataLoader(object):
     def collate_fn(self, features):
         src = [f['src'] for f in features]
         tgt = [f['tgt'] for f in features]
-
-        batch = self.prepare_seq2seq_batch(src_texts=src, tgt_texts=tgt)
+        batch = self.tokenizer.prepare_seq2seq_batch(src_texts=src, tgt_texts=tgt)
         return batch
-
-    def prepare_seq2seq_batch(self, src_texts:list, tgt_texts:list=None):
-
-        src_batch = self.enc_tokenizer(src_texts, padding=True, max_length=self.max_length, truncation=True)
-
-        input_ids = torch.tensor(src_batch["input_ids"])
-        bz = len(input_ids)
-        input_ids = torch.cat([self.length_id*torch.ones(bz, 1), input_ids], dim=1)
-        
-        encoder_attention_mask = torch.tensor(src_batch["attention_mask"])
-        encoder_attention_mask = torch.cat([torch.ones(bz, 1), encoder_attention_mask], dim=1)
-
-        out = {
-            "input_ids": input_ids.long(),
-            "encoder_attention_mask": encoder_attention_mask.long()
-        }
-
-        if tgt_texts is not None:
-            tgt_batch = self.dec_tokenizer(tgt_texts, padding=True, max_length=self.max_target_length, truncation=True)
-
-            decoder_input_ids = torch.tensor(tgt_batch["input_ids"])
-            labels = decoder_input_ids[:, 1:]
-            decoder_input_ids = torch.tensor([m[m!=self.sep_id].tolist() for m in decoder_input_ids])
-
-            decoder_attention_mask = torch.tensor(tgt_batch["attention_mask"])
-            decoder_attention_mask = decoder_attention_mask[:, 1:]
-
-            out.update({
-                "decoder_input_ids": decoder_input_ids,
-                "labels": labels,
-                "decoder_attention_mask": decoder_attention_mask
-            })
-
-        return out
 
     def build_seqlen_table(self):
 
         src = []
         for data in [self.tr_src, self.val_src]:
-            lens = [len(self.enc_tokenizer.tokenize(s)) for s in data]
+            lens = [len(self.tokenizer.encoder_tokenizer.tokenize(s)) for s in data]
             src.append({'max': max(lens), 'avg': sum(lens)/len(lens), 'min': min(lens)})
 
         tgt = []
         for data in [self.tr_tgt, self.val_tgt]:
-            lens = [len(self.dec_tokenizer.tokenize(s)) for s in data]
+            lens = [len(self.tokenizer.decoder_tokenizer.tokenize(s)) for s in data]
             tgt.append({'max': max(lens), 'avg': sum(lens)/len(lens), 'min': min(lens)})
 
         columns = ['src-train', 'src-val', 'tgt-train', 'tgt-val']

@@ -1,31 +1,30 @@
 # __author__ = "Vasudev Gupta"
 
 import os
+import json
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+# setting up `from_pretrained` method
+from transformers.file_utils import hf_bucket_url, cached_path
 
 from modeling.adapters import MixAdapterTMP
 from modeling.modeling_bert import BertModel
 from modeling.decoding import MaskPredict
 from modeling.utils import Dict
 
-# setting up `from_pretrained` method
-from transformers.file_utils import hf_bucket_url, cached_path
-import json
 
-class TransformerMaskPredict(nn.Module, MixAdapterTMP):
+class TransformerMaskPredict(nn.Module, MaskPredict, MixAdapterTMP):
 
     def __init__(self, config):
         super().__init__()
         MixAdapterTMP.__init__(self)
+        MaskPredict.__init__(self)
 
         self.config = config
 
         self.encoder = BertModel.from_pretrained(self.config["encoder_id"], num_lengths=self.config.num_lengths, add_length_embedding=True)
         self.decoder = BertModel.from_pretrained(self.config["decoder_id"])
-
-        # self.register_buffer("final_layer_bias", torch.zeros(1, self.decoder.embeddings.word_embeddings.num_embeddings))
 
         for param in self.parameters():
             param.requires_grad_(False)
@@ -63,6 +62,7 @@ class TransformerMaskPredict(nn.Module, MixAdapterTMP):
                     return_dict=True)
         length_logits = x.pop("length_logits")
         x = torch.cat([length_logits, x.pop("last_hidden_state")], dim=1)
+       
         # decoder
         x = self.decoder(input_ids=decoder_input_ids,
                         attention_mask=decoder_attention_mask,
@@ -86,13 +86,8 @@ class TransformerMaskPredict(nn.Module, MixAdapterTMP):
             "translation_loss": translation_loss
             }
 
-    @staticmethod
-    def _pad(ls:list, max_len:int, pad:int):
-        while len(ls) < max_len:
-            ls.append(pad)
-        return ls
-
     def compute_loss(self, final_logits, labels, length_logits, eps=0.1, reduction="sum"):
+        # TODO
         # loss_fn = LossFunc(eps=eps, reduction=reduction)
         # return loss_fn(final_logits, labels, length_logits)
         final_logits = final_logits.view(-1, final_logits.size(-1))
@@ -145,11 +140,6 @@ class TransformerMaskPredict(nn.Module, MixAdapterTMP):
 
         return model
 
-    def generate(self, **kwargs):
-        """
-            This method is not available and MaskPredict class should be used instead
-        """
-        raise NotImplementedError
 
 class LossFunc(nn.Module):
 

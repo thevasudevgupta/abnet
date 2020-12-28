@@ -104,7 +104,7 @@ class TrainerConfig(object):
                 map_location=torch.device("cuda:0"),
                 # model weights will be in `.pt` file 
                 # while other training stuff will be in `.tar`  
-                save_dir="resuming",
+                save_dir=None, # "resuming"
                 load_dir=None,
                 save_epoch_dir=None,
                 early_stop_n=None,

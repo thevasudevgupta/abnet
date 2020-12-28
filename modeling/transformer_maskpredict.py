@@ -65,6 +65,7 @@ class TransformerMaskPredict(nn.Module, MaskPredict, MixAdapterTMP):
 
         # adding head over length logits
         length_logits = F.linear(length_logits, self.encoder.embeddings.length_embedding.weight, bias=None)
+        # print(length_logits.shape)
 
         # decoder
         x = self.decoder(input_ids=decoder_input_ids,

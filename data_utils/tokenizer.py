@@ -96,14 +96,14 @@ class Tokenizer(object):
         if cls_id is not None:
             cls_mask = tensor.eq(cls_id)
 
-        num_masks = torch.tensor([random.randint(1, seqlen) for seqlen in seqlens.squeeze().tolist()])
+        num_masks = torch.tensor([random.randint(1, seqlen) for seqlen in seqlens.squeeze().tolist()], device=tensor.device)
         probs = num_masks / seqlens.squeeze()
         mask_bools = [[np.random.rand()>(1-probs[i].item()) for t in tensor[i]] for i in range(bz)]
-        mask_bools = torch.tensor(mask_bools)
+        mask_bools = torch.tensor(mask_bools, device=tensor.device)
         tensor.view(-1)[mask_bools.view(-1)] = mask_id
         tensor.view(-1)[pad_mask.view(-1)] = pad_id
 
-        mask_ids = torch.tensor(mask_bools).long()
+        mask_ids = mask_bools.long()
         mask_ids.view(-1)[pad_mask.view(-1)] = 0
 
         if cls_id is not None:

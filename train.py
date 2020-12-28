@@ -11,8 +11,12 @@ from training import Trainer, TrainerConfig
 from modeling import TransformerMaskPredict, Dict
 from utils import fetch_translations_and_bleu
 
+parser = argparse.ArgumentParser("either iwslt14_de_en or wmt16_ro_en")
+parser.add_argument("--training_id", type=str)
+args = parser.parse_args()
+
 # just change this to switch dataset and model config
-TRAINING_ID = "iwslt14_de_en" # "wmt16_ro_en"
+TRAINING_ID = args.training_id  # "iwslt14_de_en" or "wmt16_ro_en"
 
 TRANSFORMER_CONFIG_FILE = os.path.join("transformer_config", f"{TRAINING_ID}.yaml")
 TRAINER_CONFIG = getattr(training, TRAINING_ID)
@@ -34,7 +38,7 @@ if __name__ == "__main__":
   dl = DataLoader(args, tokenizer)
   tr_dataset, val_dataset, test_dataset = dl()
 
-  trainer = Trainer(model, args)
+  trainer = Trainer(model, tokenizer, args)
   if args.load_training_state:
     trainer.load_training_state_dict(args.base_dir)
 

@@ -34,6 +34,8 @@ class MaskPredict(object):
         length_logits = x.pop("length_logits")
         x = torch.cat([length_logits, x.pop("last_hidden_state")], dim=1)
 
+        # adding head over length logits
+        length_logits = F.linear(length_logits, self.encoder.embeddings.length_embedding.weight, bias=None)
         _, lengths = length_logits.max(dim=-1)
 
         tgt_tokens = [[self.mask_id]*t for t in lengths.squeeze().tolist()]
@@ -99,7 +101,8 @@ class MaskPredict(object):
                         encoder_hidden_states=encoder_out,
                         encoder_attention_mask=encoder_attention_mask,
                         return_dict=True)
-        probs = F.softmax(out["last_hidden_state"], dim=-1)
+        out = F.linear(out["last_hidden_state"], self.decoder.embeddings.word_embeddings.weight, bias=None)
+        probs = F.softmax(out, dim=-1)
         tgt_probs, tgt_tokens = probs.max(dim=-1)
         return tgt_tokens, tgt_probs
 

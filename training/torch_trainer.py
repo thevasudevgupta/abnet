@@ -124,22 +124,22 @@ class TrainerConfig(object):
 
 class TrainerSetup(object):
 
-    print(
-          """
-             |-----------------------------------|
-             |    Device    |     Status         |
-             |-----------------------------------|
-                    GPU     |   {}    
-             |-----------------------------------|
-                    TPU     |   {}       
-             |-----------------------------------|
-          """.format(m1, m2)
-      )
-
     def __init__(self):
         """
         This class is mainly having setup methods for enable training
         """
+        print(
+            """
+                |-----------------------------------|
+                |    Device    |     Status         |
+                |-----------------------------------|
+                        GPU     |   {}    
+                |-----------------------------------|
+                        TPU     |   {}       
+                |-----------------------------------|
+            """.format(m1, m2)
+        )
+
 
     @staticmethod
     def assert_epoch_saving(val_metric: list, n: int = 3, mode: str = "min"):
@@ -296,6 +296,7 @@ class TrainingLoop(ABC, TrainerSetup):
 
     def __init__(self, args: TrainerConfig):
         super().__init__()
+        TrainerSetup.__init__(self)
 
         self._sanity_check(args)
 
@@ -543,7 +544,7 @@ class TrainingLoop(ABC, TrainerSetup):
             print("Saving model and training related stuff")
             self.save_model_state_dict(f"{self.base_dir}/{self.save_dir}")
             self.save_training_state_dict(f"{self.base_dir}/{self.save_dir}")
-    
+
         return tr_metric, val_metric
 
     def mixed_optimizer_step(self):

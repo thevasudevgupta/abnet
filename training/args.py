@@ -15,30 +15,29 @@ class Config:
     tst_tgt_file: str
     tst_src_file: str
 
-    max_length: int = 32
-    max_target_length: int = 40
+    max_length: int
+    max_target_length: int
     
     tr_max_samples: int = 100
     val_max_samples: int = 20
     tst_max_samples: int = 20
-
     batch_size: int = 16
-    lr: float = 1e-4
-
-    base_dir: str = "base_dir"
-    num_workers: int = 2
-
-    load_finetuned_path: str = None # "model_id"
-    save_finetuned_path: str = None # "model_id"
-
-    max_epochs: int = 3
     accumulation_steps: int = 1
+    lr: float = 5e-4
+    max_epochs: int = 3
 
-    save_epoch_dir: str = None
-    save_dir: str = None
-    load_dir: str = None
+    iterations: int = 10
+    B: int = 4
 
-    # all these args will be invalid if you run sweep
+    save_training_state: str = False # or True
+    load_training_state: str = False # or True
+    load_pretrained_path: str = None
+    save_pretrained_path: str = None
+
+    bleu_num_samples: int = 2000
+    base_dir: str = "base_dir"
+    num_workers: int = 4
+    # save_epoch_dir: str = None
     project_name: str = 'parallel-decoder-paper'
     wandb_run_name: str = None
 
@@ -48,9 +47,13 @@ iwslt14_de_en = Config(tr_src_file="data/iwslt14/iwslt14.tokenized.de-en/train.d
                 val_tgt_file="data/iwslt14/iwslt14.tokenized.de-en/valid.en",
                 tst_src_file="data/iwslt14/iwslt14.tokenized.de-en/test.de",
                 tst_tgt_file="data/iwslt14/iwslt14.tokenized.de-en/test.en",
-                save_finetuned_path="abnet-iwslt14-de-en",
+                max_length=48,
+                max_target_length=48,
                 wandb_run_name="iwslt14-de-en",
-                base_dir="iwslt14-de-en")
+                base_dir="iwslt14-de-en",
+                save_pretrained_path="abnet-iwslt14-de-en",
+                load_pretrained_path=None,
+                bleu_num_samples=6000)
 
 wmt16_ro_en = Config(tr_src_file="data/wmt16_ro_en/europarl-v8.ro-en.ro",
                 tr_tgt_file="data/wmt16_ro_en/europarl-v8.ro-en.en",
@@ -58,6 +61,10 @@ wmt16_ro_en = Config(tr_src_file="data/wmt16_ro_en/europarl-v8.ro-en.ro",
                 val_tgt_file="data/wmt16_ro_en/newsdev2016-roen-ref.en.sgm",
                 tst_src_file="data/wmt16_ro_en/newstest2016-enro-ref.ro.sgm",
                 tst_tgt_file="data/wmt16_ro_en/newstest2016-enro-src.en.sgm",
-                save_finetuned_path="abnet-wmt16-ro-en",
+                max_length=56,
+                max_target_length=40,
                 wandb_run_name="wmt16-ro-en",
-                base_dir="wmt16-ro-en")
+                base_dir="wmt16-ro-en",
+                save_pretrained_path="abnet-wmt16-ro-en",
+                load_pretrained_path=None,
+                bleu_num_samples=2200)

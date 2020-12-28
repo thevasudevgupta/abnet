@@ -9,9 +9,10 @@ from modeling.bert_layers import BertAttention
 import logging
 logger = logging.getLogger(__name__)
 
+
 class FFNAdapter(nn.Module):
 
-    def __init__(self, config):
+    def __init__(self, config, init_weights=True):
         super().__init__()
 
         hidden_size = config["hidden_size"]
@@ -30,17 +31,35 @@ class FFNAdapter(nn.Module):
         self.ffn = nn.Sequential(*layers)
         self.LayerNorm = nn.LayerNorm(hidden_size, eps=layer_norm_eps)
 
+        if init_weights:
+            self.apply(self.init_weights)
+
     def forward(self, input_tensor):
         x = self.ffn(input_tensor)
         x = self.LayerNorm(x + input_tensor)        
         return x
 
+    @staticmethod
+    def init_weights(module):
+        """ Initialize the weights.
+        """
+        if isinstance(module, (nn.Linear, nn.Embedding)):
+            module.weight.data.normal_(mean=0.0, std=0.02)
+        elif isinstance(module, nn.LayerNorm):
+            module.bias.data.zero_()
+            module.weight.data.fill_(1.0)
+        if isinstance(module, nn.Linear) and module.bias is not None:
+            module.bias.data.zero_()
+
 
 class CrossAttnAdapter(nn.Module):
     
-    def __init__(self, config):
+    def __init__(self, config, init_weights=True):
         super().__init__()
         self.attn = BertAttention(config)
+
+        if init_weights:
+            self.attn.apply(self.init_weights)
 
     def forward(self, 
         hidden_states,
@@ -58,6 +77,18 @@ class CrossAttnAdapter(nn.Module):
                 output_attentions=output_attentions)
 
         return out
+
+    @staticmethod
+    def init_weights(module):
+        """ Initialize the weights.
+        """
+        if isinstance(module, (nn.Linear, nn.Embedding)):
+            module.weight.data.normal_(mean=0.0, std=0.02)
+        elif isinstance(module, nn.LayerNorm):
+            module.bias.data.zero_()
+            module.weight.data.fill_(1.0)
+        if isinstance(module, nn.Linear) and module.bias is not None:
+            module.bias.data.zero_()
 
 
 class MixAdapterBL(object):

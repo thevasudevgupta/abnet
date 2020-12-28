@@ -1,3 +1,4 @@
+
 import torch
 import torch.nn.functional as F
 from tqdm import tqdm
@@ -16,19 +17,16 @@ class MaskPredict(object):
                 encoder_attention_mask:torch.tensor,
                 tokenizer,
                 iterations=10,
-                k=1,
+                B=1,
                 **kwargs):
 
         self.eval()
 
-        # TODO fix K
-
-        # TODO check device of tensor
-        # add extra head in lengths output & save it
+        # TODO fix B
 
         self.iterations = iterations
-        self.pad_token = tokenizer.tgt_pad_token
-        self.mask_token = tokenizer.tgt_mask_token
+        self.pad_id = tokenizer.tgt_pad_id
+        self.mask_id = tokenizer.tgt_mask_id
 
         x = self.encoder(input_ids=input_ids,
                     attention_mask=encoder_attention_mask,
@@ -38,13 +36,8 @@ class MaskPredict(object):
 
         _, lengths = length_logits.max(dim=-1)
 
-        # TODO rm next line
-        lengths = torch.ones(lengths.size(), device=lengths.device)*400.
-        lengths = lengths.long()
-        # 
-
-        tgt_tokens = [[self.mask_token]*t for t in lengths.squeeze().tolist()]
-        tgt_tokens = [self._pad(ls, lengths.max(), self.pad_token) for ls in tgt_tokens]
+        tgt_tokens = [[self.mask_id]*t for t in lengths.squeeze().tolist()]
+        tgt_tokens = [self._pad(ls, lengths.max(), self.pad_id) for ls in tgt_tokens]
         tgt_tokens = torch.tensor(tgt_tokens, device=x.device)
 
         decoder_attention_mask = [[1]*t for t in lengths.squeeze().tolist()]
@@ -74,7 +67,7 @@ class MaskPredict(object):
         tgt_tokens, token_probs = self._generate_non_autoregressive(encoder_out, encoder_attention_mask, tgt_tokens, decoder_attention_mask)
         
         # [PADDING]
-        tgt_tokens.view(-1)[pad_mask.view(-1)] = self.pad_token
+        tgt_tokens.view(-1)[pad_mask.view(-1)] = self.pad_id
         token_probs.view(-1)[pad_mask.view(-1)] = 1.0
 
         for counter in tqdm(range(1, self.iterations), desc="iterating .. ", total=self.iterations):
@@ -83,8 +76,8 @@ class MaskPredict(object):
             mask_ind = self.select_worst(token_probs, num_mask)
 
             # [INPUT MASKING]
-            assign_single_value_long(tgt_tokens, mask_ind, self.mask_token)
-            tgt_tokens.view(-1)[pad_mask.view(-1)] = self.pad_token
+            assign_single_value_long(tgt_tokens, mask_ind, self.mask_id)
+            tgt_tokens.view(-1)[pad_mask.view(-1)] = self.pad_id
 
             new_tgt_tokens, new_token_probs = self._generate_non_autoregressive(encoder_out, encoder_attention_mask, tgt_tokens, decoder_attention_mask)
 
@@ -93,7 +86,7 @@ class MaskPredict(object):
             token_probs.view(-1)[pad_mask.view(-1)] = 1.0
 
             assign_multi_value_long(tgt_tokens, mask_ind, new_tgt_tokens)
-            tgt_tokens.view(-1)[pad_mask.view(-1)] = self.pad_token
+            tgt_tokens.view(-1)[pad_mask.view(-1)] = self.pad_id
 
         # getting log-probability of sequence
         lprobs = token_probs.log().sum(-1)

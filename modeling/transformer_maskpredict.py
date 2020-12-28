@@ -6,7 +6,6 @@ import json
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-# setting up `from_pretrained` method
 from transformers.file_utils import hf_bucket_url, cached_path
 
 from modeling.adapters import MixAdapterTMP
@@ -27,12 +26,12 @@ class TransformerMaskPredict(nn.Module, MaskPredict, MixAdapterTMP):
         self.encoder = BertModel.from_pretrained(self.config["encoder_id"], num_lengths=self.config.num_lengths, add_length_embedding=True)
         self.decoder = BertModel.from_pretrained(self.config["decoder_id"])
 
-        for param in self.parameters():
+        for param in self.encoder.parameters():
+            param.requires_grad_(False)
+        for param in self.decoder.parameters():
             param.requires_grad_(False)
 
-        self.add_adapter_(self.config.enc_ffn_adapter,
-                        self.config.dec_ffn_adapter,
-                        self.config.cross_attn_adapter,
+        self.add_adapter_(True, True, True,
                         self.config.enc_ffn_adapter_config,
                         self.config.dec_ffn_adapter_config,
                         self.config.cross_attn_adapter_config)
@@ -40,10 +39,10 @@ class TransformerMaskPredict(nn.Module, MaskPredict, MixAdapterTMP):
         # now encoder will have ffn-adapter
         # decoder will have ffn-adapter & cross-attn-adapter
 
-        self.adapter_requires_grad_(self.config.enc_ffn_adapter,
-                                self.config.dec_ffn_adapter,
-                                self.config.cross_attn_adapter)
-        self.layers_requires_grad_(True)
+        self.adapter_requires_grad_(self.config.enc_ffn_adapter_requires_grad,
+                                self.config.dec_ffn_adapter_requires_grad,
+                                self.config.cross_attn_adapter_requires_grad)
+        self.layers_requires_grad_(self.config.length_embed_requires_grad)
 
     def forward(self, input_ids, encoder_attention_mask, decoder_input_ids=None, decoder_attention_mask=None, labels=None, return_dict=True):
         """
@@ -63,7 +62,10 @@ class TransformerMaskPredict(nn.Module, MaskPredict, MixAdapterTMP):
                     return_dict=True)
         length_logits = x.pop("length_logits")
         x = torch.cat([length_logits, x.pop("last_hidden_state")], dim=1)
-       
+
+        # adding head over length logits
+        length_logits = F.linear(length_logits, self.encoder.embeddings.length_embedding.weight, bias=None)
+
         # decoder
         x = self.decoder(input_ids=decoder_input_ids,
                         attention_mask=decoder_attention_mask,
@@ -129,7 +131,7 @@ class TransformerMaskPredict(nn.Module, MaskPredict, MixAdapterTMP):
 
         if name in os.listdir():
             print("LOADING config & model weights from local directory")
-            config_file = os.path.join(name, "config.yaml")
+            config_file = os.path.join(name, "config.json")
             model_file = os.path.join(name, "pytorch_model.bin")
         else:
             config_url = hf_bucket_url(model_id, filename="config.json")
@@ -148,6 +150,7 @@ class TransformerMaskPredict(nn.Module, MaskPredict, MixAdapterTMP):
         model = cls(config)
         # now restoring adapter weights
         model.load_state_dict(state_dict, strict=False)
+        model.eval()
 
         return model
 

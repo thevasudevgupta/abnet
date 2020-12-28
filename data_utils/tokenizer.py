@@ -1,5 +1,7 @@
 # __author__ = 'Vasudev Gupta'
 
+import numpy as np
+import random
 import torch
 from transformers import BertTokenizer
 
@@ -13,10 +15,12 @@ class Tokenizer(object):
 
         self.length_token = length_token
         self.sep_id = self.decoder_tokenizer.convert_tokens_to_ids(self.decoder_tokenizer.sep_token)
+        self.src_pad_token = self.encoder_tokenizer.pad_token
 
         # some useful args
-        self.tgt_pad_token = self.decoder_tokenizer.convert_tokens_to_ids(self.decoder_tokenizer.pad_token)
-        self.tgt_mask_token = self.decoder_tokenizer.convert_tokens_to_ids(self.decoder_tokenizer.mask_token)
+        self.tgt_cls_id = self.decoder_tokenizer.convert_tokens_to_ids(self.decoder_tokenizer.cls_token)
+        self.tgt_pad_id = self.decoder_tokenizer.convert_tokens_to_ids(self.decoder_tokenizer.pad_token)
+        self.tgt_mask_id = self.decoder_tokenizer.convert_tokens_to_ids(self.decoder_tokenizer.mask_token)
 
     def prepare_seq2seq_batch(self, src_texts:list, tgt_texts:list=None, max_length:int=32, max_target_length:int=32):
 
@@ -55,8 +59,55 @@ class Tokenizer(object):
     def batch_decode(self, batch:torch.Tensor, is_src_txt=False, is_tgt_txt=False, skip_special_tokens=False):
         if is_src_txt:
             out = self.encoder_tokenizer.batch_decode(batch, skip_special_tokens=skip_special_tokens)
+            if not skip_special_tokens:
+                out = [sent.replace(self.src_pad_token, "[LENGTH]", 1) for sent in out]
         elif is_tgt_txt:
             out = self.decoder_tokenizer.batch_decode(batch, skip_special_tokens=skip_special_tokens)
         else:
             raise ValueError("specify either of encoder or decoder to be True")
         return out
+
+    def mask_decoder_ids(self, decoder_input_ids):
+        
+        mask_id = self.tgt_mask_id 
+        pad_id = self.tgt_pad_id
+        cls_id = self.tgt_cls_id
+ 
+        masked_decoder_ids, mask_ids = self.mask_linearly(decoder_input_ids, mask_id, pad_id, cls_id)
+
+        return {
+            "masked_decoder_ids": masked_decoder_ids,
+            "mask_ids": mask_ids
+        }
+
+    @staticmethod
+    def mask_linearly(tensor:torch.Tensor, mask_id:int, pad_id:int, cls_id:int=None):
+        """
+            Masking is done linearly such that any seq looses any # tokens from 1 to seqlen .
+
+            returns
+                masked_tensor, mask_locations
+        """
+
+        bz, seqlens = tensor.size()
+        pad_mask = tensor.eq(pad_id)
+        seqlens = seqlens - pad_mask.float().sum(1)
+
+        if cls_id is not None:
+            cls_mask = tensor.eq(cls_id)
+
+        num_masks = torch.tensor([random.randint(1, seqlen) for seqlen in seqlens.squeeze().tolist()])
+        probs = num_masks / seqlens.squeeze()
+        mask_bools = [[np.random.rand()>(1-probs[i].item()) for t in tensor[i]] for i in range(bz)]
+        mask_bools = torch.tensor(mask_bools)
+        tensor.view(-1)[mask_bools.view(-1)] = mask_id
+        tensor.view(-1)[pad_mask.view(-1)] = pad_id
+
+        mask_ids = torch.tensor(mask_bools).long()
+        mask_ids.view(-1)[pad_mask.view(-1)] = 0
+
+        if cls_id is not None:
+            tensor.view(-1)[cls_mask.view(-1)] = cls_id
+            mask_ids.view(-1)[cls_mask.view(-1)] = 0
+
+        return tensor, mask_ids

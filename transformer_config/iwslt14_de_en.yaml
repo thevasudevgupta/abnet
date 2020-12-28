@@ -1,12 +1,13 @@
 # IWSLT14 De-En
 encoder_id: bert-base-german-cased
 decoder_id: bert-base-uncased
-enc_ffn_adapter: True
-dec_ffn_adapter: True
-cross_attn_adapter: True
+enc_ffn_adapter_requires_grad: True
+dec_ffn_adapter_requires_grad: True
+cross_attn_adapter_requires_grad: True
+length_embed_requires_grad: True
 # its fine to overlap with pad token since embedding layer is different in both cases
 length_token: 0
-num_lengths: 1024
+num_lengths: 48
 enc_ffn_adapter_config:
   hidden_size: 768
   intermediate_size: 512

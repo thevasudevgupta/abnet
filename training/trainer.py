@@ -28,14 +28,13 @@ class Trainer(TorchTrainer):
         for k in batch:
             batch[k] = batch[k].to(self.device)
 
-        # TODO: complete it whenever loss_fn is ready
         loss_mask = out.pop("mask_ids")
+        # loss mask -> (bz, seqlen)
 
-        # with torch.cuda.amp.autocast((self.precision=='mixed_16')):
         out = self.model(**batch, return_dict=True)
-        self.log(length_loss=out["length_loss"], translation_loss=out["translation_loss"])
-
-        return out["loss"]
+        loss, length_loss, translation_loss = self.compute_loss(out["logits"], batch["labels"], out["length_logits"], loss_mask, pad_id=0, eps=.1, reduction="sum")
+        self.log(tr_length_loss=length_loss, tr_translation_loss=translation_loss)
+        return loss
 
     @torch.no_grad()
     def validation_step(self, batch):
@@ -46,12 +45,13 @@ class Trainer(TorchTrainer):
         for k in batch:
             batch[k] = batch[k].to(self.device)
 
-        # TODO: complete it whenever loss_fn is ready
         loss_mask = out.pop("mask_ids")
 
         out = self.model(**batch, return_dict=True)
-        self.log(length_loss=out["length_loss"], translation_loss=out["translation_loss"])
-        return out["loss"]
+        loss, length_loss, translation_loss = self.model.compute_loss(out["logits"], batch["labels"], out["length_logits"], loss_mask, pad_id=0, eps=.1, reduction="sum")
+        self.log(val_length_loss=length_loss, val_translation_loss=translation_loss)
+
+        return loss
 
     def training_epoch_end(self, epoch, losses):
 

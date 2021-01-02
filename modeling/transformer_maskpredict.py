@@ -76,27 +76,18 @@ class TransformerMaskPredict(nn.Module, MaskPredict, MixAdapterTMP):
         x = x["last_hidden_state"]
         x = F.linear(x, self.decoder.embeddings.word_embeddings.weight, bias=None)
 
-        if labels is not None:
-            loss, length_loss, translation_loss = self.compute_loss(x, labels, length_logits)
-
         if not return_dict:
-            return x, length_logits, loss, length_loss, translation_loss
+            return x, length_logits
 
         return {
             "logits": x,
-            "length_logits": length_logits,
-            "loss": loss,
-            "length_loss": length_loss,
-            "translation_loss": translation_loss
+            "length_logits": length_logits
             }
 
-    def compute_loss(self, final_logits, labels, length_logits, eps=0.1, reduction="sum"):
-        # TODO
-        # loss_fn = LossFunc(eps=eps, reduction=reduction)
-        # return loss_fn(final_logits, labels, length_logits)
-        final_logits = final_logits.view(-1, final_logits.size(-1))
-        labels = labels.view(-1)
-        return nn.CrossEntropyLoss()(final_logits, labels), None, None
+    def compute_loss(self, final_logits, labels, length_logits, loss_mask, pad_id=0, eps=0.1, reduction="sum"):
+        loss_fn = LossFunc(eps=eps, pad_id=pad_id)
+        # TODO fix rn reduction is "sum"
+        return loss_fn(final_logits, labels, length_logits, loss_mask)
 
     def save_pretrained(self, save_directory:str):
         """
@@ -158,37 +149,53 @@ class TransformerMaskPredict(nn.Module, MaskPredict, MixAdapterTMP):
 
 class LossFunc(nn.Module):
 
-    def __init__(self, eps=0.1, reduction="sum"):
+    def __init__(self, eps=0.1, pad_id=0):
         super().__init__()
-        # TODO
-        # think of padding
         self.eps = eps
-        self.reduction = reduction
+        self.pad_id = pad_id
 
-    def compute_length_loss(self, length_logits, length_labels):
+    def compute_length_loss(self, length_logits, length_labels, pad_mask):
+        num_pads = pad_mask.long().sum(dim=-1, keep_dim=True)
+        length_labels = length_labels - num_pads
         length_logits = F.log_softmax(length_logits, dim=-1)
-        length_loss = F.nll_loss(length_logits, length_labels, reduction=self.reduction)
+        length_loss = F.nll_loss(length_logits, length_labels, reduction="sum")
         return length_loss
 
-    def compute_translation_loss(self, final_logits, labels):
+    def compute_translation_loss(self, logits, labels, pad_mask, loss_mask):
+        """
+            loss_mask is tensor of bool with 1s on positions contributing loss
+        """
 
-        final_logits = F.log_softmax(final_logits, dim=-1)
-        nll_loss = F.nll_loss(final_logits, labels, reduction=self.reduction)
-        smooth_loss = final_logits.mean(-1)
-        
-        if self.reduction == "sum":
-            smooth_loss = smooth_loss.sum()
+        # TODO fix softmax over pad
+        # TODO divide by how many tokens
+        # TODO print everything and check
 
-        return (1.-self.eps)*nll_loss + self.eps*smooth_loss
+        logits = F.log_softmax(logits, dim=-1)
+        logits = logits.view(-1, logits.size(-1))
+        labels = labels.view(-1, 1)
 
-    def forward(self, final_logits, labels, length_logits):
+        non_pad_mask = ~pad_mask
+        nll_loss = -logits.gather(dim=-1, index=labels)[non_pad_mask]
+        smooth_loss = -logits.sum(-1, keep_dim=True)[non_pad_mask]
 
-        # TODO
-        length_labels = labels.size(-1)
+        loss_mask = loss_mask.view(-1, 1)
 
-        length_loss = self.compute_length_loss(length_logits, length_labels.size(-1))
-        translation_loss = self.compute_translation_loss(final_logits, labels)
+        nll_loss = nll_loss[loss_mask]
+        smooth_loss = smooth_loss[loss_mask]
 
+        nll_loss = nll_loss.sum()
+        smooth_loss = smooth_loss.sum()
+
+        return (1.-self.eps)*nll_loss + (self.eps/logits.size(-1))*smooth_loss
+
+    def forward(self, logits, labels, length_logits, loss_mask):
+
+        pad_mask = labels.eq(self.pad_id)
+        length_labels = torch.ones(labels.size(), device=labels.device).sum(1)
+
+        length_loss = self.compute_length_loss(length_logits, length_labels, pad_mask)
+
+        translation_loss = self.compute_translation_loss(logits, labels, pad_mask, loss_mask)
         loss = 0.1*length_loss + translation_loss
 
         return {

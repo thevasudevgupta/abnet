@@ -128,18 +128,6 @@ class TrainerSetup(object):
         """
         This class is mainly having setup methods for enable training
         """
-        print(
-            """
-                |-----------------------------------|
-                |    Device    |     Status         |
-                |-----------------------------------|
-                        GPU     |   {}    
-                |-----------------------------------|
-                        TPU     |   {}       
-                |-----------------------------------|
-            """.format(m1, m2)
-        )
-
 
     @staticmethod
     def assert_epoch_saving(val_metric: list, n: int = 3, mode: str = "min"):
@@ -648,6 +636,17 @@ class TorchTrainer(TrainingLoop):
 
     def __init__(self, args):
         TrainingLoop.__init__(self, args)
+        print(
+            """
+                |-----------------------------------|
+                |    Device    |     Status         |
+                |-----------------------------------|
+                        GPU     |   {}    
+                |-----------------------------------|
+                        TPU     |   {}       
+                |-----------------------------------|
+            """.format(m1, m2)
+        )
 
     @abstractmethod
     def configure_optimizers(self):

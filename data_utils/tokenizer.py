@@ -81,9 +81,11 @@ class Tokenizer(object):
         }
 
     @staticmethod
-    def mask_linearly(tensor:torch.Tensor, mask_id:int, pad_id:int, cls_id:int=None):
+    def mask_linearly(tensor:torch.Tensor, mask_id:int, pad_id:int, cls_id:int):
         """
             Masking is done linearly such that any seq looses any # tokens from 1 to seqlen .
+
+            mask_locations is excluding <pad> tokens automatically by putting 0s at padded positions
 
             returns
                 masked_tensor, mask_locations
@@ -93,8 +95,7 @@ class Tokenizer(object):
         pad_mask = tensor.eq(pad_id)
         seqlens = seqlens - pad_mask.float().sum(1)
 
-        if cls_id is not None:
-            cls_mask = tensor.eq(cls_id)
+        cls_mask = tensor.eq(cls_id)
 
         num_masks = torch.tensor([random.randint(1, seqlen) for seqlen in seqlens.squeeze().tolist()], device=tensor.device)
         probs = num_masks / seqlens.squeeze()
@@ -106,8 +107,11 @@ class Tokenizer(object):
         mask_ids = mask_bools.long()
         mask_ids.view(-1)[pad_mask.view(-1)] = 0
 
-        if cls_id is not None:
-            tensor.view(-1)[cls_mask.view(-1)] = cls_id
-            mask_ids.view(-1)[cls_mask.view(-1)] = 0
+        tensor.view(-1)[cls_mask.view(-1)] = cls_id
+        mask_ids.view(-1)[cls_mask.view(-1)] = 0
+
+        # lets shift mask_ids to right
+        extra_tokens = mask_ids[:, :1]
+        mask_ids = torch.cat([mask_ids[:, 1:], extra_tokens], dim=-1)
 
         return tensor, mask_ids

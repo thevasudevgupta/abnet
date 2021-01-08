@@ -12,6 +12,7 @@ class Trainer(TorchTrainer):
 
         self.model = model
         self.tokenizer = tokenizer
+        self.pad_id = tokenizer.tgt_pad_id
         self.lr = args.lr
         self.args = args
 
@@ -29,12 +30,10 @@ class Trainer(TorchTrainer):
             batch[k] = batch[k].to(self.device)
 
         loss_mask = out.pop("mask_ids")
-        # loss mask -> (bz, seqlen)
-
         out = self.model(**batch, return_dict=True)
  
-        losses = self.model.compute_loss(out["logits"], batch["labels"], out["length_logits"], loss_mask, pad_id=0, eps=.1, reduction="sum")
-        self.log(tr_length_loss=losses["length_loss"], tr_translation_loss=losses["translation_loss"])
+        losses = self.model.compute_loss(out["logits"], batch["labels"], out["length_logits"], loss_mask, pad_id=self.pad_id, eps=.1, reduction="mean")
+        self.log(tr_length_loss=losses["length_loss"].item(), tr_translation_loss=losses["translation_loss"].item())
 
         return losses["loss"]
 
@@ -48,11 +47,10 @@ class Trainer(TorchTrainer):
             batch[k] = batch[k].to(self.device)
 
         loss_mask = out.pop("mask_ids")
-
         out = self.model(**batch, return_dict=True)
 
-        losses = self.model.compute_loss(out["logits"], batch["labels"], out["length_logits"], loss_mask, pad_id=0, eps=.1, reduction="sum")
-        self.log(tr_length_loss=losses["length_loss"], tr_translation_loss=losses["translation_loss"])
+        losses = self.model.compute_loss(out["logits"], batch["labels"], out["length_logits"], loss_mask, pad_id=self.pad_id, eps=.1, reduction="mean")
+        self.log(val_length_loss=losses["length_loss"].item(), val_translation_loss=losses["translation_loss"].item())
 
         return losses["loss"]
 

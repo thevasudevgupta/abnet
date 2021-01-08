@@ -52,10 +52,6 @@ class TransformerMaskPredict(nn.Module, MaskPredict, MixAdapterTMP):
             labels: torch.tensor : ............, [SEP], [PAD] ...... [PAD]
         """
 
-        loss = None
-        length_loss = None
-        translation_loss = None
-
         # encoder
         x = self.encoder(input_ids=input_ids,
                     attention_mask=encoder_attention_mask,
@@ -84,7 +80,7 @@ class TransformerMaskPredict(nn.Module, MaskPredict, MixAdapterTMP):
             }
 
     def compute_loss(self, final_logits, labels, length_logits, loss_mask, pad_id=0, eps=0.1, reduction="sum"):
-        loss_fn = LossFunc(eps=eps, pad_id=pad_id)
+        loss_fn = LossFunc(eps=eps, pad_id=pad_id, reduction=reduction)
         # TODO fix rn reduction is "sum"
         return loss_fn(final_logits, labels, length_logits, loss_mask)
 
@@ -148,10 +144,11 @@ class TransformerMaskPredict(nn.Module, MaskPredict, MixAdapterTMP):
 
 class LossFunc(nn.Module):
 
-    def __init__(self, eps=0.1, pad_id=0):
+    def __init__(self, eps=0.1, pad_id=0, reduction="sum"):
         super().__init__()
         self.eps = eps
         self.pad_id = pad_id
+        self.reduction = reduction
 
     def compute_length_loss(self, length_logits, length_labels, pad_mask):
         
@@ -174,7 +171,6 @@ class LossFunc(nn.Module):
         logits = logits.view(-1, logits.size(-1))
         labels = labels.view(-1, 1)
 
-        # non_pad_mask = ~pad_mask
         pad_mask = pad_mask.view(-1)
         nll_loss = -logits.gather(dim=-1, index=labels).squeeze()
         nll_loss[pad_mask] = 0.
@@ -184,11 +180,8 @@ class LossFunc(nn.Module):
 
         loss_mask = loss_mask.eq(1).view(-1)
   
-        nll_loss = nll_loss[loss_mask]
-        smooth_loss = smooth_loss[loss_mask]
-
-        nll_loss = nll_loss.sum()
-        smooth_loss = smooth_loss.sum()
+        nll_loss = nll_loss[loss_mask].sum()
+        smooth_loss = smooth_loss[loss_mask].sum()
 
         return (1.-self.eps)*nll_loss + (self.eps/logits.size(-1))*smooth_loss
 
@@ -200,6 +193,13 @@ class LossFunc(nn.Module):
         length_loss = self.compute_length_loss(length_logits, length_labels, pad_mask)
         translation_loss = self.compute_translation_loss(logits, labels, pad_mask, loss_mask)
         loss = 0.1*length_loss + translation_loss
+
+        if self.reduction == "mean":
+            loss_mask.view(-1)[pad_mask.view(-1)] = 0.
+            num_tokens = loss_mask.sum()
+            loss = loss/num_tokens
+            length_loss = length_loss/num_tokens
+            translation_loss = translation_loss/num_tokens
 
         return {
             "loss": loss,

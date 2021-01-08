@@ -18,6 +18,7 @@ class MaskPredict(object):
                 tokenizer,
                 iterations=10,
                 B=1,
+                display_bar=False,
                 **kwargs):
 
         self.eval()
@@ -46,7 +47,7 @@ class MaskPredict(object):
         decoder_attention_mask = [self._pad(ls, lengths.max(), 0) for ls in decoder_attention_mask]
         decoder_attention_mask = torch.tensor(decoder_attention_mask, device=x.device)
 
-        tgt_tokens, lprobs = self._generate(x, encoder_attention_mask, tgt_tokens, decoder_attention_mask)
+        tgt_tokens, lprobs = self._generate(x, encoder_attention_mask, tgt_tokens, decoder_attention_mask, display_bar)
 
         output = {
             "tgt_tokens": tgt_tokens,
@@ -61,7 +62,7 @@ class MaskPredict(object):
             ls.append(pad)
         return ls
 
-    def _generate(self, encoder_out, encoder_attention_mask, tgt_tokens, decoder_attention_mask):
+    def _generate(self, encoder_out, encoder_attention_mask, tgt_tokens, decoder_attention_mask, display_bar=False):
         pad_mask = decoder_attention_mask.eq(0)
         seqlens = tgt_tokens.size(1) - pad_mask.sum(dim=1)
 
@@ -72,7 +73,8 @@ class MaskPredict(object):
         tgt_tokens.view(-1)[pad_mask.view(-1)] = self.pad_id
         token_probs.view(-1)[pad_mask.view(-1)] = 1.0
 
-        for counter in tqdm(range(1, self.iterations), desc="iterating .. ", total=self.iterations):
+        pbar = tqdm(range(1, self.iterations), desc="iterating .. ", total=self.iterations) if display_bar else range(1, self.iterations)
+        for counter in pbar:
 
             num_mask = (seqlens.float() * (1.0 - (counter / self.iterations))).long()
             mask_ind = self.select_worst(token_probs, num_mask)

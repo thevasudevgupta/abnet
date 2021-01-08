@@ -18,21 +18,17 @@ cd data/iwslt14
 bash prepare-iwslt14.sh
 
 # start training
-python train.py
+python train.py --training_id "iwslt14_de_en"
 ```
 
 **Using trained model directly**
 
 ```python
-# Using model for inference
 from modeling import TransformerMaskPredict
 
 # lets load model-weights from huggingface hub
 model_id = "vasudevgupta/abnet-iwslt14-de-en"
 model = TransformerMaskPredict.from_pretrained(model_id)
-# use this model for whatever task you want
-
-## OR
 
 # you can directly run existing script for inference
 sh scripts/infer_iwslt14_de_en.sh

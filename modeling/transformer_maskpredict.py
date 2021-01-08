@@ -211,7 +211,7 @@ class LossFunc(nn.Module):
         length_labels = torch.ones(labels.size(), device=labels.device).sum(1)
 
         length_loss = self.compute_length_loss(length_logits, length_labels, pad_mask)
-        print("length loss is fine only")
+#         print("length loss is fine only")
 
         translation_loss = self.compute_translation_loss(logits, labels, pad_mask, loss_mask)
         loss = 0.1*length_loss + translation_loss

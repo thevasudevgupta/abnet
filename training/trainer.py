@@ -32,9 +32,11 @@ class Trainer(TorchTrainer):
         # loss mask -> (bz, seqlen)
 
         out = self.model(**batch, return_dict=True)
-        loss, length_loss, translation_loss = self.compute_loss(out["logits"], batch["labels"], out["length_logits"], loss_mask, pad_id=0, eps=.1, reduction="sum")
-        self.log(tr_length_loss=length_loss, tr_translation_loss=translation_loss)
-        return loss
+ 
+        losses = self.model.compute_loss(out["logits"], batch["labels"], out["length_logits"], loss_mask, pad_id=0, eps=.1, reduction="sum")
+        self.log(tr_length_loss=losses["length_loss"], tr_translation_loss=losses["translation_loss"])
+
+        return losses["loss"]
 
     @torch.no_grad()
     def validation_step(self, batch):
@@ -48,10 +50,11 @@ class Trainer(TorchTrainer):
         loss_mask = out.pop("mask_ids")
 
         out = self.model(**batch, return_dict=True)
-        loss, length_loss, translation_loss = self.model.compute_loss(out["logits"], batch["labels"], out["length_logits"], loss_mask, pad_id=0, eps=.1, reduction="sum")
-        self.log(val_length_loss=length_loss, val_translation_loss=translation_loss)
 
-        return loss
+        losses = self.model.compute_loss(out["logits"], batch["labels"], out["length_logits"], loss_mask, pad_id=0, eps=.1, reduction="sum")
+        self.log(tr_length_loss=losses["length_loss"], tr_translation_loss=losses["translation_loss"])
+
+        return losses["loss"]
 
     def training_epoch_end(self, epoch, losses):
 

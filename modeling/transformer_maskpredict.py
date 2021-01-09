@@ -164,9 +164,6 @@ class LossFunc(nn.Module):
             loss_mask is tensor with 1s on positions contributing loss
         """
 
-        # TODO divide by how many tokens
-        # TODO print everything and check
-
         logits = F.log_softmax(logits, dim=-1)
         logits = logits.view(-1, logits.size(-1))
         labels = labels.view(-1, 1)
@@ -195,7 +192,7 @@ class LossFunc(nn.Module):
         loss = 0.1*length_loss + translation_loss
 
         if self.reduction == "mean":
-            loss_mask.view(-1)[pad_mask.view(-1)] = 0.
+            loss_mask.view(-1)[pad_mask.view(-1)] = 0
             num_tokens = loss_mask.sum()
             loss = loss/num_tokens
             length_loss = length_loss/num_tokens

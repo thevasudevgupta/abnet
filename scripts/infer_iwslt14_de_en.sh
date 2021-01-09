@@ -1,4 +1,4 @@
-python infer.py --model_id "vasudevgupta/abnet-iwslt14" \
+python infer.py --model_id "abnet-iwslt14-de-en" \
     --tr_tgt_file "data/iwslt14/iwslt14.tokenized.de-en/train.en" \
     --tr_src_file "data/iwslt14/iwslt14.tokenized.de-en/train.de" \
     --val_tgt_file "data/iwslt14/iwslt14.tokenized.de-en/valid.en" \

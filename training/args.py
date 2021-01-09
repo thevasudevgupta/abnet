@@ -17,14 +17,15 @@ class Config:
 
     max_length: int
     max_target_length: int
-    
-    tr_max_samples: int = 100
-    val_max_samples: int = 20
-    tst_max_samples: int = 20
-    batch_size: int = 16
+
+    tr_max_samples: int = 20000
+    val_max_samples: int = 8000
+    tst_max_samples: int = 8000
+    bleu_num_samples: int = 6000
+    batch_size: int = 64
     accumulation_steps: int = 1
-    lr: float = 5e-4
-    max_epochs: int = 3
+    lr: float = 1e-3
+    max_epochs: int = 10
 
     iterations: int = 10
     B: int = 4
@@ -34,7 +35,6 @@ class Config:
     load_pretrained_path: str = None
     save_pretrained_path: str = None
 
-    bleu_num_samples: int = 2000
     base_dir: str = "base_dir"
     num_workers: int = 4
     # save_epoch_dir: str = None
@@ -52,8 +52,7 @@ iwslt14_de_en = Config(tr_src_file="data/iwslt14/iwslt14.tokenized.de-en/train.d
                 wandb_run_name="iwslt14-de-en",
                 base_dir="iwslt14-de-en",
                 save_pretrained_path="abnet-iwslt14-de-en",
-                load_pretrained_path=None,
-                bleu_num_samples=6000)
+                load_pretrained_path=None)
 
 wmt16_ro_en = Config(tr_src_file="data/wmt16_ro_en/europarl-v8.ro-en.ro",
                 tr_tgt_file="data/wmt16_ro_en/europarl-v8.ro-en.en",

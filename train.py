@@ -43,9 +43,9 @@ if __name__ == "__main__":
     trainer.load_training_state_dict(args.base_dir)
 
   trainer.fit(tr_dataset, val_dataset)
-    
+
   if args.save_pretrained_path:
-    trainer.model.save_pretrained(args.save_pretrained_path)
+    trainer.model.save_pretrained(os.path.join(args.base_dir, args.save_pretrained_path))
 
   tst_loss = trainer.evaluate(test_dataset)
   wandb.log({"tst_loss": tst_loss})

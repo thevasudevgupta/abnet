@@ -31,7 +31,7 @@ def fetch_translations_and_bleu(model:nn.Module,
     tgt = []
     src = []
 
-    for batch in tqdm(dataset, desc="predicting ... "):
+    for batch in tqdm(dataset, desc="predicting ... ", leave=False):
 
         for k in batch:
             batch[k] = batch[k].to(device)

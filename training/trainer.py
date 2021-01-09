@@ -58,6 +58,6 @@ class Trainer(TorchTrainer):
 
         save_pretrained_path = self.args.save_pretrained_path
         if save_pretrained_path:
-            self.model.save_pretrained(save_pretrained_path)
+            self.model.save_pretrained(os.path.join(self.args.base_dir, save_pretrained_path+f"-e{epoch}"))
         if self.args.save_training_state:
             self.save_training_state_dict(self.args.base_dir)

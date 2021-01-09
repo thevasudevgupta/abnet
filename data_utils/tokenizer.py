@@ -21,6 +21,7 @@ class Tokenizer(object):
         self.tgt_cls_id = self.decoder_tokenizer.convert_tokens_to_ids(self.decoder_tokenizer.cls_token)
         self.tgt_pad_id = self.decoder_tokenizer.convert_tokens_to_ids(self.decoder_tokenizer.pad_token)
         self.tgt_mask_id = self.decoder_tokenizer.convert_tokens_to_ids(self.decoder_tokenizer.mask_token)
+        self.tgt_sep_id = self.decoder_tokenizer.convert_tokens_to_ids(self.decoder_tokenizer.sep_token)
 
     def prepare_seq2seq_batch(self, src_texts:list, tgt_texts:list=None, max_length:int=32, max_target_length:int=32):
 
@@ -42,11 +43,9 @@ class Tokenizer(object):
             tgt_batch = self.decoder_tokenizer(tgt_texts, padding=True, max_length=max_target_length, truncation=True)
 
             decoder_input_ids = torch.tensor(tgt_batch["input_ids"])
-            labels = decoder_input_ids[:, 1:]
-            decoder_input_ids = torch.tensor([m[m!=self.sep_id].tolist() for m in decoder_input_ids])
+            labels = torch.tensor(tgt_batch["input_ids"])
 
             decoder_attention_mask = torch.tensor(tgt_batch["attention_mask"])
-            decoder_attention_mask = decoder_attention_mask[:, 1:]
 
             out.update({
                 "decoder_input_ids": decoder_input_ids,
@@ -71,9 +70,8 @@ class Tokenizer(object):
         
         mask_id = self.tgt_mask_id 
         pad_id = self.tgt_pad_id
-        cls_id = self.tgt_cls_id
  
-        masked_decoder_ids, mask_ids = self.mask_linearly(decoder_input_ids, mask_id, pad_id, cls_id)
+        masked_decoder_ids, mask_ids = self.mask_linearly(decoder_input_ids, mask_id, pad_id)
 
         return {
             "masked_decoder_ids": masked_decoder_ids,
@@ -81,7 +79,7 @@ class Tokenizer(object):
         }
 
     @staticmethod
-    def mask_linearly(tensor:torch.Tensor, mask_id:int, pad_id:int, cls_id:int):
+    def mask_linearly(tensor:torch.Tensor, mask_id:int, pad_id:int):
         """
             Masking is done linearly such that any seq looses any # tokens from 1 to seqlen .
 
@@ -95,8 +93,6 @@ class Tokenizer(object):
         pad_mask = tensor.eq(pad_id)
         seqlens = seqlens - pad_mask.float().sum(1)
 
-        cls_mask = tensor.eq(cls_id)
-
         num_masks = torch.tensor([random.randint(1, seqlen) for seqlen in seqlens.squeeze().tolist()], device=tensor.device)
         probs = num_masks / seqlens.squeeze()
         mask_bools = [[np.random.rand()>(1-probs[i].item()) for t in tensor[i]] for i in range(bz)]
@@ -106,12 +102,5 @@ class Tokenizer(object):
 
         mask_ids = mask_bools.long()
         mask_ids.view(-1)[pad_mask.view(-1)] = 0
-
-        tensor.view(-1)[cls_mask.view(-1)] = cls_id
-        mask_ids.view(-1)[cls_mask.view(-1)] = 0
-
-        # lets shift mask_ids to right
-        extra_tokens = mask_ids[:, :1]
-        mask_ids = torch.cat([mask_ids[:, 1:], extra_tokens], dim=-1)
 
         return tensor, mask_ids

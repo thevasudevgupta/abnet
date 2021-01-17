@@ -18,13 +18,13 @@ class Config:
     max_length: int
     max_target_length: int
 
-    tr_max_samples: int = 20000
-    val_max_samples: int = 8000
-    tst_max_samples: int = 8000
+    tr_max_samples: int = -1
+    val_max_samples: int = -1
+    tst_max_samples: int = -1
     bleu_num_samples: int = 6000
-    batch_size: int = 64
+    batch_size: int = 16
     accumulation_steps: int = 1
-    lr: float = 1e-3
+    lr: float = 7e-4
     max_epochs: int = 10
 
     iterations: int = 10

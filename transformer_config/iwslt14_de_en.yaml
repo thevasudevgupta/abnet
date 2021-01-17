@@ -1,24 +1,21 @@
-# IWSLT14 De-En
+# TODO: fix config for iwslt14
 encoder_id: bert-base-german-cased
-decoder_id: bert-base-uncased
-enc_ffn_adapter_requires_grad: True
-dec_ffn_adapter_requires_grad: True
-cross_attn_adapter_requires_grad: True
+decoder_id: bert-base-cased
+bert_requires_grad: False
+encoder_adapter_requires_grad: True
+decoder_adapter_requires_grad: True
 length_embed_requires_grad: True
+lm_head_requires_grad: True
 # its fine to overlap with pad token since embedding layer is different in both cases
 length_token: 0
-num_lengths: 48
-enc_ffn_adapter_config:
-  hidden_size: 768
-  intermediate_size: 512
-  layer_norm_eps: 1.e-12
-dec_ffn_adapter_config: 
+num_lengths: 1024
+encoder_adapter_config:
   hidden_size: 768
   intermediate_size: 2048
-  layer_norm_eps: 1.e-12
-cross_attn_adapter_config: 
+  layer_norm_eps: 1.e-5
+decoder_adapter_config: 
   hidden_size: 768
-  layer_norm_eps: 1.e-12
-  hidden_dropout_prob: 0.1
-  num_attention_heads: 12
-  attention_probs_dropout_prob: 0.1
+  intermediate_size: 2048
+  layer_norm_eps: 1.e-5
+  dropout_prob: 0.1
+  num_attention_heads: 8

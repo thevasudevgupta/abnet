@@ -39,6 +39,9 @@ class MaskPredict(object):
         length_logits = F.linear(length_logits, self.encoder.embeddings.length_embedding.weight, bias=None)
         _, lengths = length_logits.max(dim=-1)
 
+        # TODO : remove this
+        # lengths = torch.ones(lengths.size(), device=lengths.device).long()*32
+
         tgt_tokens = [[self.mask_id]*t for t in lengths.squeeze().tolist()]
         tgt_tokens = [self._pad(ls, lengths.max(), self.pad_id) for ls in tgt_tokens]
         tgt_tokens = torch.tensor(tgt_tokens, device=x.device)

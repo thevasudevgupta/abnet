@@ -1,94 +1,26 @@
 # __author__ = "Vasudev Gupta"
 
 import torch
+import torch.nn.functional as F
 from torch import nn
 from transformers.activations import ACT2FN
 
-from modeling.bert_layers import BertAttention
-
-import logging
-logger = logging.getLogger(__name__)
+from modeling.multihead_attention import MultiheadAttention
 
 
-class FFNAdapter(nn.Module):
+class AdapterBasedDecoder(nn.Module):
 
-    def __init__(self, config, init_weights=True):
-        super().__init__()
+    def __init__(self, bert, adapter_config):
+        super(AdapterBasedDecoder, self).__init__()
 
-        hidden_size = config["hidden_size"]
-        intermediate_size = config.get("intermediate_size", None)
-        layer_norm_eps = config["layer_norm_eps"]
+        self.bert = bert
 
-        if intermediate_size is None:
-            intermediate_size = hidden_size
+        n = len(self.bert.encoder.layer)
+        for i in range(n):
+            self.bert.encoder.layer[i].add_decoder_adapter_(adapter_config)
 
-        layers = []
-
-        layers.append(nn.Linear(hidden_size, intermediate_size))
-        layers.append(nn.ReLU())
-        layers.append(nn.Linear(intermediate_size, hidden_size))
-
-        self.ffn = nn.Sequential(*layers)
-        self.LayerNorm = nn.LayerNorm(hidden_size, eps=layer_norm_eps)
-
-        if init_weights:
-            self.apply(self.init_weights)
-
-    def forward(self, input_tensor):
-        x = self.ffn(input_tensor)
-        x = self.LayerNorm(x + input_tensor)        
-        return x
-
-    @staticmethod
-    def init_weights(module):
-        """ Initialize the weights.
-        """
-        if isinstance(module, (nn.Linear, nn.Embedding)):
-            module.weight.data.normal_(mean=0.0, std=0.02)
-        elif isinstance(module, nn.LayerNorm):
-            module.bias.data.zero_()
-            module.weight.data.fill_(1.0)
-        if isinstance(module, nn.Linear) and module.bias is not None:
-            module.bias.data.zero_()
-
-
-class CrossAttnAdapter(nn.Module):
-    
-    def __init__(self, config, init_weights=True):
-        super().__init__()
-        self.attn = BertAttention(config)
-
-        if init_weights:
-            self.attn.apply(self.init_weights)
-
-    def forward(self, 
-        hidden_states,
-        attention_mask=None,
-        head_mask=None,
-        encoder_hidden_states=None,
-        encoder_attention_mask=None,
-        output_attentions=False
-    ):
-        out = self.attn(hidden_states,
-                attention_mask=attention_mask,
-                head_mask=head_mask,
-                encoder_hidden_states=encoder_hidden_states,
-                encoder_attention_mask=encoder_attention_mask,
-                output_attentions=output_attentions)
-
-        return out
-
-    @staticmethod
-    def init_weights(module):
-        """ Initialize the weights.
-        """
-        if isinstance(module, (nn.Linear, nn.Embedding)):
-            module.weight.data.normal_(mean=0.0, std=0.02)
-        elif isinstance(module, nn.LayerNorm):
-            module.bias.data.zero_()
-            module.weight.data.fill_(1.0)
-        if isinstance(module, nn.Linear) and module.bias is not None:
-            module.bias.data.zero_()
+    def forward(self, **kwargs):
+        return self.bert(**kwargs)
 
 
 class MixAdapterBL(object):
@@ -97,174 +29,93 @@ class MixAdapterBL(object):
         """
             Inherit BertLayer from this class to add support for adapters
         """
-        self.add_cross_attn_adapter = False
-        self.add_ffn_adapter = False
+        self.add_encoder_adapter = False
+        self.add_decoder_adapter = False
 
-    def add_cross_attn_adapter_(self, adapter_config):
-        self.add_cross_attn_adapter = True
-        self.cross_attn_adapter = CrossAttnAdapter(adapter_config)
+    def add_decoder_adapter_(self, adapter_config):
+        self.add_decoder_adapter = True
+
+        layer_norm_eps = adapter_config.layer_norm_eps
+        dropout_prob = adapter_config.dropout_prob
+        num_attention_heads = adapter_config.num_attention_heads
+        hidden_size = adapter_config.hidden_size
+        intermediate_size = adapter_config.intermediate_size
+
+        self.encoder_attn =  MultiheadAttention(hidden_size,
+                                            num_attention_heads,
+                                            kdim=hidden_size,
+                                            vdim=hidden_size,
+                                            dropout=dropout_prob, 
+                                            encoder_decoder_attention=True)
+        self.encoder_attn_layer_norm = nn.LayerNorm(hidden_size)
+
+        self.encoder_attn_fc1 = nn.Linear(hidden_size, intermediate_size)
+        self.encoder_attn_fc2 = nn.Linear(intermediate_size, hidden_size)
+        self.encoder_attn_final_layer_norm = nn.LayerNorm(hidden_size, eps=layer_norm_eps)
+
         return "ADDED"
 
-    def cross_attn_adapter_forward(self,  
-                            hidden_states,
-                            attention_mask=None,
-                            head_mask=None,
-                            encoder_hidden_states=None,
-                            encoder_attention_mask=None,
-                            output_attentions=False):
+    # TODO : fix this
+    def decoder_adapter_forward(self,  
+                                hidden_states,
+                                attention_mask=None,
+                                head_mask=None,
+                                encoder_hidden_states=None,
+                                encoder_attention_mask=None,
+                                output_attentions=False):
 
-        hidden_states = self.cross_attn_adapter(hidden_states,
+        hidden_states = self.encoder_attn(hidden_states,
                                         attention_mask=attention_mask,
                                         head_mask=head_mask,
                                         encoder_hidden_states=encoder_hidden_states,
                                         encoder_attention_mask=encoder_attention_mask,
                                         output_attentions=output_attentions)
 
+
         return hidden_states[0]
 
-    def add_ffn_adapter_(self, adapter_config):
-        self.add_ffn_adapter = True
-        self.ffn_adapter = FFNAdapter(adapter_config)
+    def add_encoder_adapter_(self, adapter_config):
+        self.add_encoder_adapter = True
+
+        hidden_size = adapter_config["hidden_size"]
+        intermediate_size = adapter_config["intermediate_size"]
+        layer_norm_eps = adapter_config["layer_norm_eps"]
+
+        self.adapter_ln = nn.LayerNorm(hidden_size, eps=layer_norm_eps)
+        self.adapter_w1 = nn.Linear(hidden_size, intermediate_size, bias=False)
+        self.adapter_w2 = nn.Linear(intermediate_size, hidden_size, bias=False)
+
         return "adapter ADDED"
 
-    def ffn_adapter_forward(self, x):
-        return self.ffn_adapter(x)
+    def encoder_adapter_forward(self, bert_out):
+        x = self.adapter_ln(bert_out)
+        x = self.adapter_w2(F.relu(self.adapter_w1(x)))
+        return x + bert_out
 
-    def adapter_requires_grad_(self, ffn_adapter, cross_attn_adapter=None):
+    def encoder_adapter_requires_grad_(self, encoder_adapter):
 
-        m1 = "ffn_adapter ADD first"
-        m2 = "cross-attn_adapter ADD first"
+        if self.add_encoder_adapter:
+            for param in self.adapter_ln.parameters():
+                param.requires_grad_(encoder_adapter)
+            for param in self.adapter_w1.parameters():
+                param.requires_grad_(encoder_adapter)
+            for param in self.adapter_w2.parameters():
+                param.requires_grad_(encoder_adapter)
+        else:
+            raise ValueError("ADD encoder adapters first")
 
-        if self.add_ffn_adapter:
-            m1 = "ffn_adapter NOT trainable"
-            for param in self.ffn_adapter.parameters():
-                param.requires_grad_(ffn_adapter)
-            if ffn_adapter:
-                m1 = "ffn_adapter trainable"
+    def decoder_adapter_requires_grad_(self, decoder_adapter):
 
-        if self.add_cross_attn_adapter:
-            m2 = "cross-attn_adapter NOT trainable"
-            for param in self.cross_attn_adapter.parameters():
-                param.requires_grad_(cross_attn_adapter)
-            if cross_attn_adapter:
-                m2 = "cross-attn_adapter trainable"
-
-        return m1, m2
-
-
-class MixAdapterTMP(object):
-
-    def __init__(self):
-        """
-            Inherit TransformerMaskPredict from this class to add support for adapters
-        """
-
-    def add_adapter_(self, 
-                enc_ffn_adapter, 
-                dec_ffn_adapter,
-                cross_attn_adapter,
-                enc_ffn_adapter_config,
-                dec_ffn_adapter_config, 
-                cross_attn_adapter_config):
-
-        m1 = "cross-attn_adapter NOT added"
-        m2 = "decoder ffn_adapter NOT added"
-        m3 = "encoder ffn_adapter NOT added"
-
-        if cross_attn_adapter:
-            n = len(self.decoder.encoder.layer)
-            for i in range(n):
-                m1 = self.decoder.encoder.layer[i].add_cross_attn_adapter_(cross_attn_adapter_config)
-            m1 = "Cross-attn " + m1
-
-        if dec_ffn_adapter:
-            n = len(self.decoder.encoder.layer)
-            for i in range(n):
-                m2 = self.decoder.encoder.layer[i].add_ffn_adapter_(dec_ffn_adapter_config)
-            m2 = "decoder " + m2
-
-        if enc_ffn_adapter:
-            n = len(self.encoder.encoder.layer)
-            for i in range(n):
-                m3 = self.encoder.encoder.layer[i].add_ffn_adapter_(enc_ffn_adapter_config)
-            m3 = "encoder " + m3
-
-        logger.info("==========Adapter ADDN status==========")
-        logger.info(m1, "\n", m2, "\n", m3)
-        logger.info("=============================================")
-
-
-    def adapter_requires_grad_(self,
-                    enc_ffn_adapter: bool,
-                    dec_ffn_adapter: bool,
-                    cross_attn_adapter: bool,
-                ):
-
-        m1 = "cross-attn_adapter NOT activated"
-        m2 = "decoder ffn_adapter NOT activated"
-        m3 = "encoder ffn_adapter NOT activated"
-
-        n = len(self.encoder.encoder.layer)
-        for i in range(n):
-            m1, _ = self.encoder.encoder.layer[i].adapter_requires_grad_(enc_ffn_adapter)
-            m1 = "encoder " + m1
-
-        n = len(self.decoder.encoder.layer)
-        for i in range(n):
-            m2, m3 = self.decoder.encoder.layer[i].adapter_requires_grad_(dec_ffn_adapter, cross_attn_adapter)
-            m2 = "decoder " + m2
-
-        logger.info("==========Adapter activation status==========")
-        logger.info(m1, "\n", m2, "\n", m3)
-        logger.info("=============================================")
-
-    def layers_requires_grad_(self, length_embed:bool):
-        for p in self.encoder.embeddings.length_embedding.parameters():
-            p.requires_grad_(length_embed)
-
-    def save_finetuned(self,
-                    path:str,
-                    enc_ffn_adapter:bool=True,
-                    dec_ffn_adapter:bool=True,
-                    cross_attn_adapter:bool=True,
-                    length_embed:bool=True,
-                    print_status:bool=True):
-
-        state_dict = self.state_dict()
-        saving_keys = []
-
-        if enc_ffn_adapter:
-            num = len(self.encoder.encoder.layer)
-            for i in range(num):
-                k = f"encoder.encoder.layer.{i}.ffn_adapter"
-                saving_keys.extend([key for key in state_dict.keys() if key.startswith(k)])
-
-        if dec_ffn_adapter:
-            num = len(self.decoder.encoder.layer)
-            for i in range(num):
-                k = f"decoder.encoder.layer.{i}.ffn_adapter"
-                saving_keys.extend([key for key in state_dict.keys() if key.startswith(k)])
-
-        if cross_attn_adapter:
-            num = len(self.decoder.encoder.layer)
-            for i in range(num):
-                k = f"decoder.encoder.layer.{i}.cross_attn_adapter"
-                saving_keys.extend([key for key in state_dict.keys() if key.startswith(k)])
-
-        if length_embed:
-            k = "encoder.embeddings.length_embedding"
-            saving_keys.extend([key for key in state_dict.keys() if key.startswith(k)])
-
-        saving = {}
-        for k in saving_keys:
-            saving.update({k: state_dict[k]})
-
-        if path:
-            if print_status: print(f"saving: {saving.keys()}")
-            torch.save(saving, path)
-
-    def load_finetuned(self, path:str=None, map_location="cuda:0"):
-        # simple loading; saving is very important
-        state_dict = torch.load(path, map_location=map_location)
-        self.load_state_dict(state_dict, strict=False)
-        print(f'Whatever weights were in {path} are loaded')
+        if self.add_decoder_adapter:
+            for param in self.encoder_attn.parameters():
+                param.requires_grad_(decoder_adapter)
+            for param in self.encoder_attn_layer_norm.parameters():
+                param.requires_grad_(decoder_adapter)
+            for param in self.encoder_attn_fc1.parameters():
+                param.requires_grad_(decoder_adapter)
+            for param in self.encoder_attn_fc2.parameters():
+                param.requires_grad_(decoder_adapter)
+            for param in self.encoder_attn_final_layer_norm.parameters():
+                param.requires_grad_(decoder_adapter)
+        else:
+            raise ValueError("ADD decoder adapters first")

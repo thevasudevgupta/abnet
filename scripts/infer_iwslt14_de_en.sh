@@ -11,4 +11,4 @@ python infer.py --model_id "abnet-iwslt14-de-en" \
     --num_workers 4 \
     --max_length 48 \
     --max_target_length 48 \
-    --bleu_num_samples 6000
+    --bleu_num_samples 600

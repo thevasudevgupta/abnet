@@ -66,12 +66,11 @@ class TransformerMaskPredict(nn.Module, MaskPredict):
         for p in self.encoder.embeddings.length_embedding.parameters():
             p.requires_grad_(length_embed_requires_grad)
 
-        for p in self.dense.parameters():
-            p.requires._grad_(lm_head_requires_grad)
+        for p in self.final_dense.parameters():
+            p.requires_grad_(lm_head_requires_grad)
         for p in self.final_layer_norm.parameters():
             p.requires_grad_(lm_head_requires_grad)
-        for p in self.final_bias.parameters():
-            p.requires_grad_(lm_head_requires_grad)
+        self.final_bias.requires_grad_(lm_head_requires_grad)
 
     def _add_encoder_adapter_(self, adapter_config):
 

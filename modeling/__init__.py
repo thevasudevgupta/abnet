@@ -17,8 +17,6 @@ Below files are completely written by us
   - decoding.py
 """
 
-# [k for k in s["model"].keys() if not(k.startswith('decoder.bert.encoder.layer') or k.startswith("encoder.encoder.layer"))]
-
 # TODO : remove commented
 # switched from postlayer norm to prelayer norm in encoder-adapter
 # length embedding initialized properly

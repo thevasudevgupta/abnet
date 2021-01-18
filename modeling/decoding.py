@@ -32,15 +32,18 @@ class MaskPredict(object):
         x = self.encoder(input_ids=input_ids,
                     attention_mask=encoder_attention_mask,
                     return_dict=True)
+
         length_logits = x.pop("length_logits")
         x = torch.cat([length_logits, x.pop("last_hidden_state")], dim=1)
 
         # adding head over length logits
         length_logits = F.linear(length_logits, self.encoder.embeddings.length_embedding.weight, bias=None)
         _, lengths = length_logits.max(dim=-1)
+        print(lengths)
 
         # TODO : remove this
-        # lengths = torch.ones(lengths.size(), device=lengths.device).long()*32
+        lengths = torch.ones(lengths.size(), device=lengths.device).long()*10
+        print(lengths)
 
         tgt_tokens = [[self.mask_id]*t for t in lengths.squeeze().tolist()]
         tgt_tokens = [self._pad(ls, lengths.max(), self.pad_id) for ls in tgt_tokens]
@@ -101,13 +104,17 @@ class MaskPredict(object):
 
     @torch.no_grad()
     def _generate_non_autoregressive(self, encoder_out, encoder_attention_mask, tgt_tokens, decoder_attention_mask):
-        out = self.decoder(input_ids=tgt_tokens,
+        # print(tgt_tokens.shape, tgt_tokens.type(), tgt_tokens)
+        x = self.decoder(input_ids=tgt_tokens,
                         attention_mask=decoder_attention_mask,
                         encoder_hidden_states=encoder_out,
                         encoder_attention_mask=encoder_attention_mask,
                         return_dict=True)
-        out = F.linear(out["last_hidden_state"], self.decoder.embeddings.word_embeddings.weight, bias=None)
-        probs = F.softmax(out, dim=-1)
+
+        # language modeling head
+        x = self.final_layer_norm(F.relu(self.final_dense(x["last_hidden_state"])))
+        x = F.linear(x, self.decoder.bert.embeddings.word_embeddings.weight, bias=self.final_bias)
+        probs = F.softmax(x, dim=-1)
         tgt_probs, tgt_tokens = probs.max(dim=-1)
         return tgt_tokens, tgt_probs
 

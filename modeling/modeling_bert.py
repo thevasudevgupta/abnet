@@ -408,11 +408,9 @@ class BertLayer(nn.Module, MixAdapterBL):
             layer_output = self.encoder_adapter_forward(layer_output)
         if self.add_decoder_adapter:
             layer_output = self.decoder_adapter_forward(layer_output,
-                                                attention_mask=attention_mask,
-                                                head_mask=head_mask,
-                                                encoder_hidden_states=encoder_hidden_states,
-                                                encoder_attention_mask=encoder_attention_mask,
-                                                output_attentions=output_attentions)
+                                                        decoder_attention_mask=attention_mask,
+                                                        encoder_hidden_states=encoder_hidden_states,
+                                                        encoder_attention_mask=encoder_attention_mask)
 
         outputs = (layer_output,) + outputs
         return outputs

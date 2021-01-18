@@ -141,6 +141,7 @@ class MultiheadAttention(nn.Module):
             if key_padding_mask is not None:
                 key_padding_mask = torch.cat(
                     [key_padding_mask, key_padding_mask.new_zeros(key_padding_mask.size(0), 1)], dim=1)
+        # print(key_padding_mask.shape)
 
         q = q.contiguous().view(tgt_len, bsz * self.num_heads, self.head_dim).transpose(0, 1)
         if k is not None:
@@ -175,6 +176,7 @@ class MultiheadAttention(nn.Module):
             key_padding_mask = None
 
         if key_padding_mask is not None:
+            # print(key_padding_mask.shape, bsz, src_len)
             assert key_padding_mask.size(0) == bsz
             assert key_padding_mask.size(1) == src_len
 

@@ -41,6 +41,7 @@ class MixAdapterBL(object):
         hidden_size = adapter_config.hidden_size
         intermediate_size = adapter_config.intermediate_size
 
+        self.dropout_prob = dropout_prob
         self.encoder_attn =  MultiheadAttention(hidden_size,
                                             num_attention_heads,
                                             kdim=hidden_size,
@@ -55,24 +56,38 @@ class MixAdapterBL(object):
 
         return "ADDED"
 
-    # TODO : fix this
     def decoder_adapter_forward(self,  
                                 hidden_states,
-                                attention_mask=None,
-                                head_mask=None,
-                                encoder_hidden_states=None,
-                                encoder_attention_mask=None,
-                                output_attentions=False):
+                                decoder_attention_mask,
+                                encoder_hidden_states,
+                                encoder_attention_mask):
 
-        hidden_states = self.encoder_attn(hidden_states,
-                                        attention_mask=attention_mask,
-                                        head_mask=head_mask,
-                                        encoder_hidden_states=encoder_hidden_states,
-                                        encoder_attention_mask=encoder_attention_mask,
-                                        output_attentions=output_attentions)
+        key_padding_mask = (encoder_attention_mask == -1.0000e+09).long().squeeze()
 
+        # TODO: fix decoder-attn-mask
+        # print(decoder_attention_mask)
+        # print(decoder_attention_mask.shape)
 
-        return hidden_states[0]
+        hidden_states = hidden_states.transpose(0, 1)
+        x, _ = self.encoder_attn(query=hidden_states,
+                            key=encoder_hidden_states,
+                            value=encoder_hidden_states,
+                            key_padding_mask=key_padding_mask,
+                            static_kv=True,
+                            need_weights=False)
+        x = F.dropout(x, p=self.dropout_prob, training=self.training)
+        x = hidden_states + x
+        x = self.encoder_attn_layer_norm(hidden_states)
+
+        hidden_states = x
+        x = F.relu(self.encoder_attn_fc1(x))
+        x = F.dropout(x, p=self.dropout_prob, training=self.training)
+        x = self.encoder_attn_fc2(x)
+        x = F.dropout(x, p=self.dropout_prob, training=self.training)
+        x = hidden_states + x
+        x = self.encoder_attn_final_layer_norm(x)
+
+        return x.transpose(0,1)
 
     def add_encoder_adapter_(self, adapter_config):
         self.add_encoder_adapter = True

@@ -1,5 +1,3 @@
-# __author__ = "Vasudev Gupta"
-
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -63,11 +61,6 @@ class MixAdapterBL(object):
                                 encoder_attention_mask):
 
         key_padding_mask = (encoder_attention_mask == -1.0000e+09).long().squeeze()
-
-        # TODO: fix decoder-attn-mask
-        # print(decoder_attention_mask)
-        # print(decoder_attention_mask.shape)
-
         hidden_states = hidden_states.transpose(0, 1)
         x, _ = self.encoder_attn(query=hidden_states,
                             key=encoder_hidden_states,

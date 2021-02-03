@@ -1,5 +1,3 @@
-# __author__ = 'Vasudev Gupta'
-
 import numpy as np
 import random
 import torch

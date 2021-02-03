@@ -1,5 +1,3 @@
-# __author__ = 'Vasudev Gupta'
-
 import torch
 from training.torch_trainer import TorchTrainer
 from tqdm import tqdm

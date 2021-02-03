@@ -1,5 +1,3 @@
-# __author__ = 'Vasudev Gupta'
-
 class Dict(dict):
 
     def __init__(self, **kwargs):

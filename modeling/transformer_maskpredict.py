@@ -1,5 +1,3 @@
-# __author__ = "Vasudev Gupta"
-
 import os
 import json
 
@@ -117,7 +115,6 @@ class TransformerMaskPredict(nn.Module, MaskPredict):
 
     def compute_loss(self, final_logits, labels, length_logits, loss_mask, pad_id=0, eps=0.1, reduction="sum"):
         loss_fn = LossFunc(eps=eps, pad_id=pad_id, reduction=reduction)
-        # TODO fix rn reduction is "sum"
         return loss_fn(final_logits, labels, length_logits, loss_mask)
 
     def save_pretrained(self, save_directory:str):

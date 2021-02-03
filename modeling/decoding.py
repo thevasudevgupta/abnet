@@ -23,8 +23,6 @@ class MaskPredict(object):
 
         self.eval()
 
-        # TODO fix B
-
         self.iterations = iterations
         self.pad_id = tokenizer.tgt_pad_id
         self.mask_id = tokenizer.tgt_mask_id
@@ -39,11 +37,6 @@ class MaskPredict(object):
         # adding head over length logits
         length_logits = F.linear(length_logits, self.encoder.embeddings.length_embedding.weight, bias=None)
         _, lengths = length_logits.max(dim=-1)
-        print(lengths)
-
-        # TODO : remove this
-        lengths = torch.ones(lengths.size(), device=lengths.device).long()*10
-        print(lengths)
 
         tgt_tokens = [[self.mask_id]*t for t in lengths.squeeze().tolist()]
         tgt_tokens = [self._pad(ls, lengths.max(), self.pad_id) for ls in tgt_tokens]
@@ -104,7 +97,6 @@ class MaskPredict(object):
 
     @torch.no_grad()
     def _generate_non_autoregressive(self, encoder_out, encoder_attention_mask, tgt_tokens, decoder_attention_mask):
-        # print(tgt_tokens.shape, tgt_tokens.type(), tgt_tokens)
         x = self.decoder(input_ids=tgt_tokens,
                         attention_mask=decoder_attention_mask,
                         encoder_hidden_states=encoder_out,

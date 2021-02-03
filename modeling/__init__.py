@@ -1,4 +1,4 @@
-__author__ = "Vasudev Gupta"
+__author__ = "Vasudev Gupta, Rishabh Shah"
 
 from modeling.transformer_maskpredict import TransformerMaskPredict
 from modeling.utils import Dict
@@ -10,16 +10,5 @@ bert code is taken from HuggingFace directly (below files)
 
 Small changes are added in above files to add adapters in BERT
 
-Below files are completely written by us
-  - adapters.py
-  - transformer_maskpredict.py
-  - utils.py
-  - decoding.py
+Rest of all files are written by us completely
 """
-
-# TODO : remove commented
-# switched from postlayer norm to prelayer norm in encoder-adapter
-# length embedding initialized properly
-# added extra dense-layer, layer-norm before shared-embed in lm head
-# added bias in shared-embed in lm head
-# 

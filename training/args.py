@@ -53,17 +53,3 @@ iwslt14_de_en = Config(tr_src_file="data/iwslt14/iwslt14.tokenized.de-en/train.d
                 base_dir="iwslt14-de-en",
                 save_pretrained_path="abnet-iwslt14-de-en",
                 load_pretrained_path=None)
-
-wmt16_ro_en = Config(tr_src_file="data/wmt16_ro_en/europarl-v8.ro-en.ro",
-                tr_tgt_file="data/wmt16_ro_en/europarl-v8.ro-en.en",
-                val_src_file="data/wmt16_ro_en/newsdev2016-roen-src.ro.sgm",
-                val_tgt_file="data/wmt16_ro_en/newsdev2016-roen-ref.en.sgm",
-                tst_src_file="data/wmt16_ro_en/newstest2016-enro-ref.ro.sgm",
-                tst_tgt_file="data/wmt16_ro_en/newstest2016-enro-src.en.sgm",
-                max_length=56,
-                max_target_length=40,
-                wandb_run_name="wmt16-ro-en",
-                base_dir="wmt16-ro-en",
-                save_pretrained_path="abnet-wmt16-ro-en",
-                load_pretrained_path=None,
-                bleu_num_samples=2200)

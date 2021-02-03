@@ -1,5 +1,3 @@
-# __author__ = 'Vasudev Gupta'
-
 import wandb
 from sacrebleu import corpus_bleu
 from tqdm import tqdm

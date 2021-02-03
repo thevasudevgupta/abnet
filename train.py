@@ -1,5 +1,3 @@
-# __author__ = "Vasudev Gupta"
-
 import yaml
 import wandb
 import os
@@ -16,7 +14,7 @@ parser.add_argument("--training_id", type=str)
 args = parser.parse_args()
 
 # just change this to switch dataset and model config
-TRAINING_ID = args.training_id  # "iwslt14_de_en" or "wmt16_ro_en"
+TRAINING_ID = args.training_id  # "iwslt14_de_en"
 
 TRANSFORMER_CONFIG_FILE = os.path.join("transformer_config", f"{TRAINING_ID}.yaml")
 TRAINER_CONFIG = getattr(training, TRAINING_ID)

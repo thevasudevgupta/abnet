@@ -4,15 +4,9 @@ Unofficial implementation of [paper](https://arxiv.org/abs/2010.06138).
 
 ## Setting Up
 
-```python
-# cloning github repo
-git clone https://github.com/vasudevgupta7/cs6910-project.git
-cd cs6910-project
-```
-
 **Setting up dataset and training scripts**
 
-```python
+```shell
 # download & prepare IWSLT14 dataset 
 cd data/iwslt14
 bash prepare-iwslt14.sh
@@ -29,9 +23,15 @@ from modeling import TransformerMaskPredict
 # lets load model-weights from huggingface hub
 model_id = "vasudevgupta/abnet-iwslt14-de-en"
 model = TransformerMaskPredict.from_pretrained(model_id)
-
-# you can directly run existing script for inference
-sh scripts/infer_iwslt14_de_en.sh
 ```
 
-**Feel free to raise an issue incase you find some problem in this implementation.**
+## Note:
+
+- `prepare-iwslt14.sh` is directly taken from fairseq (as per mentioned in paper)
+- `modeling/multihead_attention.py`, `modeling/modeling_bert.py` are taken from huggingface repositary; but small changes are introduced for adding adapters.
+- Rest of all scripts are completely written by us.
+- We are hosting our weights in `huggingface_hub` to ease process of loading model.
+
+## Submitted by
+
+**Vasudev Gupta (ME18B182) & Rishabh Shah (ME18B029)**

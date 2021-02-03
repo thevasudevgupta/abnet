@@ -1,4 +1,3 @@
-# __author__ = "Vasudev Gupta"
 import yaml
 import wandb
 

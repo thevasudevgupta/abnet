@@ -1,4 +1,4 @@
-# __author__ = 'Vasudev Gupta'
+# __author__ = 'Vasudev Gupta, Rishabh Shah'
 
 from training.args import iwslt14_de_en, wmt16_ro_en
 from training.trainer import Trainer
